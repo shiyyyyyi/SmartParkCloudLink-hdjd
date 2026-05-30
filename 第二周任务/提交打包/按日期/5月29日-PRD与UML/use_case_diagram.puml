@@ -1,0 +1,65 @@
+@startuml 智慧停车平台-用例图
+' ============================================
+' 用例图：AI-driven 城市智慧停车管理与诱导系统
+' 作者：19组 PM 丁梓钊
+' 版本：V1.0
+' ============================================
+
+left to right direction
+skinparam packageStyle rectangle
+
+actor "私家车主" as Driver
+actor "停车场管理员" as Admin
+actor "系统" as System <<system>>
+
+rectangle "智慧停车管理平台" {
+  
+  ' --- 车主用例 ---
+  usecase (UC-01 用户注册与登录) as UC01
+  usecase (UC-02 浏览停车场信息) as UC02
+  usecase (UC-03 车位实时查询) as UC03
+  usecase (UC-04 车位在线预约) as UC04
+  usecase (UC-05 停车计费与支付) as UC05
+  usecase (UC-06 查看停车记录) as UC06
+  usecase (UC-07 反向寻车) as UC07
+  
+  ' --- 管理员用例 ---
+  usecase (UC-08 管理停车场信息) as UC08
+  usecase (UC-09 查看运营数据) as UC09
+  usecase (UC-10 查看数据看板) as UC10
+  
+  ' --- 包含关系 ---
+  UC03 ..> UC02 : <<include>>
+  UC04 ..> UC03 : <<include>>
+  UC05 ..> (系统计算费用) : <<include>>
+  UC06 ..> UC01 : <<include>>
+  UC07 ..> UC01 : <<include>>
+  UC09 ..> UC08 : <<include>>
+  UC10 ..> UC09 : <<include>>
+}
+
+' --- 角色关联 ---
+Driver --> UC01
+Driver --> UC02
+Driver --> UC03
+Driver --> UC04
+Driver --> UC05
+Driver --> UC06
+Driver --> UC07
+
+Admin --> UC01
+Admin --> UC08
+Admin --> UC09
+Admin --> UC10
+
+note right of UC04
+  预约锁定15分钟
+  超时自动释放
+end note
+
+note bottom of UC05
+  模拟支付流程
+  不接入真实支付
+end note
+
+@enduml
