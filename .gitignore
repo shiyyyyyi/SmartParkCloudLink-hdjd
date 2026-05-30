@@ -1,0 +1,19 @@
+# 临时文件
+temp_docx_read/
+temp_docx_edit/
+docx_content.txt
+*.pyc
+__pycache__/
+
+# 临时脚本
+read_docx_content.py
+generate_missing_charts.py
+insert_charts_to_docx.py
+insert_images_properly.py
+simple_insert_images.py
+
+# 生成的图表（已嵌入docx中）
+软件功能结构图.png
+系统生产环境结构图.png
+业务流程图.png
+用户画像.png
