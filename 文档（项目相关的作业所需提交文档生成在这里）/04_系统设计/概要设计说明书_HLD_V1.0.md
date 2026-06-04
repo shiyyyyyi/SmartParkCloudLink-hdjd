@@ -3,7 +3,7 @@
 ## AI-driven城市智慧停车管理与诱导系统
 
 > **文档编号**：HLD-SmartPark-2026-V1.0
-> **对应模板**：Project ID_SD_HLD_V1.0
+> **对应模板**：概要设计说明书模板（SD HLD V1.0）
 > **课程**：软件工程实训(A)（1521190120）| 第3周
 > **小组**：第19组
 > **编写人**：程晓洋（SA/系统架构师）、程子浩、丁梓钊
@@ -61,7 +61,7 @@
 | 目标 | 描述 |
 |:---:|------|
 | 可演示性 | 本地完整运行，零外部依赖，答辩演示不受网络影响 |
-| 可扩展性 | 模块独立，预留M12-M22扩展接口 |
+| 可扩展性 | 按项目要求18个一级业务模块设计，AI/GIS/支付/设备等能力预留模拟接口与后续真实接入口 |
 | 可维护性 | 前后端分离，API标准化，代码规范统一 |
 | 可测试性 | 每模块独立可测，提供模拟数据初始化脚本 |
 
@@ -123,105 +123,58 @@
 
 ### 3.1 模块总览
 
-系统共22个功能模块，按优先级分为三层：
+系统一级业务模块严格对应 `项目要求.txt` 中的18项功能。注册登录、停车场CRUD、订单管理、支付模拟、数据表等属于实现支撑子功能，不再拆成额外一级模块。
 
 ```
-第一层 P0（核心-完整实现，7个模块）：
-  M1 用户注册登录 → M2 车场管理 → M3 车位查询
-  → M4 在线预约 → M5 计费支付 → M6 记录寻车 → M7 车主端
+P0 核心闭环：
+  M2 停车场数据联网接入
+  M3 城市停车一张图
+  M5 智能导航与车位预约
+  M6 车牌识别与无感支付
+  M13 车场运营管理后台
+  M14 车主移动端APP/小程序
 
-第二层 P1（重要-完整实现，2个模块）：
-  M8 运营后台 → M9 数据看板
+P1 重要能力：
+  M1 路内停车位视觉检测
+  M4 停车诱导信息发布
+  M7 停车行为大数据分析
+  M8 动态定价策略引擎
+  M9 共享停车管理平台
+  M15 反向寻车导航
+  M17 城市停车监管平台
 
-第三层 P2（增强-完整实现，2个模块）：
-  M10 共享车位 → M11 违停管理
-
-第四层 P2*（扩展-模拟实现，10个模块）：
-  M12-M22 模拟扩展模块
+P2 扩展能力：
+  M10 充电车位智能管理
+  M11 违停自动抓拍与取证
+  M12 长期停车月卡管理
+  M16 设备运维管理平台
+  M18 商圈停车联合营销
 ```
 
 ### 3.2 模块详细设计
 
-#### 3.2.1 M1 用户注册与登录
+| 模块ID | 一级业务模块 | 前端/页面设计 | 后端服务设计 | 主要数据表 |
+|:---:|---|---|---|---|
+| M1 | 路内停车位视觉检测 | 检测面板、复核页面 | 模拟识别结果接收、状态更新、复核记录 | parking_spots, violations |
+| M2 | 停车场数据联网接入 | 接入配置、接入状态面板 | 标准化接入API、数据校验、离线告警 | parking_lots, parking_spots |
+| M3 | 城市停车一张图 | 停车地图/列表、区域热度 | 空位聚合、筛选排序、热度计算 | parking_lots, parking_spots |
+| M4 | 停车诱导信息发布 | 诱导屏管理页面 | 诱导内容生成、发布状态记录 | guide_screens, parking_lots |
+| M5 | 智能导航与车位预约 | 推荐列表、预约确认、倒计时 | 推荐排序、预约状态机、超时释放 | reservations, parking_spots |
+| M6 | 车牌识别与无感支付 | 入出场模拟、支付确认 | 模拟识别、订单生成、自动计费与模拟扣款 | parking_orders, vehicles |
+| M7 | 停车行为大数据分析 | 分析图表、导出报表 | 周转率、平均时长、饱和度聚合 | parking_orders, parking_spots |
+| M8 | 动态定价策略引擎 | 价格规则配置、调价记录 | 费率系数计算、价格公示 | pricing_rules, parking_lots |
+| M9 | 共享停车管理平台 | 共享发布、共享预约、收益页 | 时段冲突校验、共享订单管理 | shared_spots, reservations |
+| M10 | 充电车位智能管理 | 充电车位列表、告警面板 | 充电状态维护、异常占用告警 | parking_spots, charging_spots |
+| M11 | 违停自动抓拍与取证 | 违停证据列表、审核页 | 模拟抓拍、证据归档、处理状态 | violations |
+| M12 | 长期停车月卡管理 | 月卡申请、审批、续费页 | 有效期计算、到期提醒 | monthly_cards, vehicles |
+| M13 | 车场运营管理后台 | 运营概览、车位/收入/流量管理 | 指标聚合、远程操作、日志记录 | parking_lots, parking_orders, devices |
+| M14 | 车主移动端APP/小程序 | 车主首页、搜索、预约、支付、发票 | 聚合车主服务API、登录态校验 | users, vehicles, reservations, orders |
+| M15 | 反向寻车导航 | 车牌输入、位置展示、路线指引 | 进行中订单查询、路线文本生成 | parking_orders, parking_spots |
+| M16 | 设备运维管理平台 | 设备列表、故障告警、日志页 | 设备状态更新、告警处理、日志查询 | devices |
+| M17 | 城市停车监管平台 | 监管大屏、供需分析、政策评估 | 多车场聚合、脱敏统计、区域对比 | parking_lots, parking_orders, violations |
+| M18 | 商圈停车联合营销 | 活动管理、规则配置、核销页 | 优惠规则计算、停车券核销 | marketing_events, coupons |
 
-| 项目 | 内容 |
-|------|------|
-| **前端路由** | `/login`, `/register`, `/profile` |
-| **后端路由** | `POST /api/auth/register`, `POST /api/auth/login`, `GET /api/auth/me`, `PUT /api/auth/profile`, `PUT /api/auth/password`, `POST /api/auth/logout` |
-| **数据库表** | `users` |
-| **关键逻辑** | 注册：bcrypt哈希密码 → 存入users表；登录：验证密码 → 创建Session |
-
-#### 3.2.2 M2 停车场信息管理
-
-| 项目 | 内容 |
-|------|------|
-| **前端路由** | `/admin/lots`, `/admin/lots/create`, `/admin/lots/:id/edit` |
-| **后端路由** | `GET/POST /api/lots`, `GET/PUT/DELETE /api/lots/{id}`, `POST /api/lots/{id}/spots/batch` |
-| **数据库表** | `parking_lots` |
-| **关键逻辑** | CRUD操作；级联删除车位数据；批量生成车位 |
-
-#### 3.2.3 M3 车位状态实时查询
-
-| 项目 | 内容 |
-|------|------|
-| **前端路由** | `/search`, `/lots/:id/spots` |
-| **后端路由** | `GET /api/lots/search?keyword=&sort=`, `GET /api/lots/{id}/spots`, `GET /api/lots/nearby` |
-| **数据库表** | `parking_lots`, `parking_spots` |
-| **关键逻辑** | 多条件筛选排序；实时车位状态统计；空余≤5红色标记 |
-
-#### 3.2.4 M4 车位在线预约
-
-| 项目 | 内容 |
-|------|------|
-| **前端路由** | `/spots/:id/reserve`, `/my-reservations` |
-| **后端路由** | `POST /api/reservations`, `GET /api/reservations/my`, `PUT /api/reservations/{id}/confirm`, `DELETE /api/reservations/{id}` |
-| **数据库表** | `reservations`, `parking_spots` |
-| **关键逻辑** | 状态机（free→locked→occupied→free）；15分钟超时自动释放（前端倒计时+后端定时检查） |
-
-#### 3.2.5 M5 停车计费与模拟支付
-
-| 项目 | 内容 |
-|------|------|
-| **前端路由** | `/orders/:id/checkout`, `/my-orders` |
-| **后端路由** | `POST /api/orders/{id}/checkout`, `POST /api/orders/{id}/pay`, `GET /api/orders/my`, `GET /api/orders/{id}` |
-| **数据库表** | `parking_orders`, `parking_spots` |
-| **关键逻辑** | 费用 = 时长(小时) × 费率；模拟支付确认；支付成功释放车位 |
-
-#### 3.2.6 M6 停车记录与反向寻车
-
-| 项目 | 内容 |
-|------|------|
-| **前端路由** | `/my-records`, `/find-car` |
-| **后端路由** | `GET /api/records/my`, `GET /api/records/{id}`, `GET /api/records/find-car?plate=` |
-| **数据库表** | `parking_orders`, `parking_spots` |
-| **关键逻辑** | 按车牌查当前占用车位；返回车位位置信息+指引描述 |
-
-#### 3.2.7 M7 车主服务端
-
-| 项目 | 内容 |
-|------|------|
-| **前端路由** | `/` (首页) |
-| **后端路由** | `GET /api/home/stats` (聚合首页数据) |
-| **数据库表** | 聚合查询多表 |
-| **关键逻辑** | 聚合M3-M6功能入口；推荐停车场；预约倒计时提醒 |
-
-#### 3.2.8 M8 车场运营管理后台
-
-| 项目 | 内容 |
-|------|------|
-| **前端路由** | `/admin/dashboard`, `/admin/spots`, `/admin/flow`, `/admin/revenue` |
-| **后端路由** | `GET /api/admin/lots/{id}/overview`, `GET /api/admin/lots/{id}/spots`, `GET /api/admin/lots/{id}/flow`, `GET /api/admin/lots/{id}/revenue`, `PUT /api/admin/spots/{id}/release`, `GET /api/admin/lots/{id}/export` |
-| **数据库表** | `parking_lots`, `parking_spots`, `parking_orders` |
-| **关键逻辑** | 运营指标聚合查询；手动释放车位；导出报表 |
-
-#### 3.2.9 M9 数据可视化看板
-
-| 项目 | 内容 |
-|------|------|
-| **前端路由** | `/admin/analytics` |
-| **后端路由** | `GET /api/analytics/turnover`, `GET /api/analytics/saturation`, `GET /api/analytics/revenue-trend`, `GET /api/analytics/heatmap`, `GET /api/analytics/user-growth`, `GET /api/analytics/conversion` |
-| **数据库表** | `parking_orders`, `parking_spots`, `users` |
-| **关键逻辑** | 统计聚合SQL → JSON → ECharts渲染；支持时间维度切换 |
+> 说明：`users`、`auth`、`parking_orders` 等实现对象是系统支撑能力，不作为项目一级功能模块单独编号。
 
 ---
 
@@ -375,15 +328,15 @@
 | status | VARCHAR(20) | DEFAULT 'active' | active/inactive |
 | created_at | DATETIME | DEFAULT NOW | 发布时间 |
 
-#### 4.2.8 扩展表（M12-M22预留）
+#### 4.2.8 扩展表（对应18个一级业务模块预留）
 
 | 表名 | 用途 | 关联模块 |
 |------|------|:---:|
-| devices | 设备信息（摄像头、道闸、诱导屏、充电桩） | M20 |
-| monthly_cards | 月卡信息（用户、车场、有效期） | M19 |
-| marketing_events | 营销活动（规则、优惠内容、有效期） | M22 |
+| devices | 设备信息（摄像头、道闸、诱导屏、充电桩） | M16 |
+| monthly_cards | 月卡信息（用户、车场、有效期） | M12 |
+| marketing_events | 营销活动（规则、优惠内容、有效期） | M18 |
 | guide_screens | 诱导屏信息（位置、指向车场、显示内容） | M14 |
-| charging_spots | 充电车位扩展信息（充电功率、状态） | M18 |
+| charging_spots | 充电车位扩展信息（充电功率、状态） | M10 |
 
 ### 4.3 索引设计
 
@@ -517,33 +470,40 @@
 
 ```
 # 车主端路由
-/                       → 首页（M7）
-/login                  → 登录页（M1）
-/register               → 注册页（M1）
-/profile                → 个人信息（M1）
+/                       → 车主端首页（M14）
+/login                  → 登录页（M14支撑子功能）
+/register               → 注册页（M14支撑子功能）
+/profile                → 个人信息（M14支撑子功能）
 /search                 → 停车场搜索（M3）
 /lots/:id               → 车场详情+车位列表（M3）
-/spots/:id/reserve      → 预约确认（M4）
-/my-reservations        → 我的预约（M4）
-/my-orders              → 我的订单（M5）
-/orders/:id/checkout    → 出场结算（M5）
-/my-records             → 停车记录（M6）
-/find-car               → 反向寻车（M6）
-/shared-spots            → 共享车位列表（M10）
-/my-shared               → 我的共享（M10）
+/spots/:id/reserve      → 预约确认（M5）
+/my-reservations        → 我的预约（M5）
+/my-orders              → 我的订单（M6）
+/orders/:id/checkout    → 出场结算与模拟支付（M6）
+/my-records             → 停车记录（M14支撑子功能）
+/find-car               → 反向寻车（M15）
+/shared-spots            → 共享车位列表（M9）
+/my-shared               → 我的共享（M9）
+/charging-spots          → 充电车位（M10）
+/monthly-cards           → 月卡申请与续费（M12）
+/marketing               → 停车优惠活动（M18）
 
 # 管理端路由
-/admin/dashboard        → 运营概览（M8）
+/admin/dashboard        → 车场运营概览（M13）
 /admin/lots             → 车场管理列表（M2）
 /admin/lots/create      → 新增车场（M2）
 /admin/lots/:id/edit    → 编辑车场（M2）
-/admin/spots            → 车位管理（M8）
-/admin/flow             → 进出场流量（M8）
-/admin/revenue          → 收入统计（M8）
-/admin/analytics        → 数据看板（M9）
-/admin/violations       → 违停管理（M11）
-/admin/devices          → 设备管理（M20-模拟）
-/admin/marketing        → 营销管理（M22-模拟）
+/admin/roadside         → 路内车位视觉检测（M1）
+/admin/guide-screens    → 停车诱导信息发布（M4）
+/admin/spots            → 车位管理（M13）
+/admin/flow             → 进出场流量（M13）
+/admin/revenue          → 收入统计（M13）
+/admin/analytics        → 停车行为大数据分析（M7）
+/admin/pricing          → 动态定价策略引擎（M8）
+/admin/violations       → 违停自动抓拍与取证（M11）
+/admin/devices          → 设备运维管理平台（M16）
+/admin/regulation       → 城市停车监管平台（M17）
+/admin/marketing        → 商圈停车联合营销（M18）
 ```
 
 ### 6.2 前端组件树
@@ -594,7 +554,10 @@ App.vue
 │       ├── FlowPage.vue        # 流量
 │       ├── RevenuePage.vue     # 收入
 │       ├── AnalyticsPage.vue   # 数据分析
-│       └── ViolationsPage.vue  # 违停管理
+│       ├── PricingPage.vue     # 动态定价
+│       ├── DevicesPage.vue     # 设备运维
+│       ├── RegulationPage.vue  # 城市监管
+│       └── ViolationsPage.vue  # 违停取证
 ├── stores/
 │   ├── auth.js                 # 认证状态（Pinia）
 │   ├── parking.js              # 停车数据状态
@@ -690,7 +653,7 @@ backend/
 | AuthService | register(), login(), get_current_user() | 认证相关业务逻辑 |
 | LotService | create_lot(), search_lots(), get_lot_stats() | 车场管理业务逻辑 |
 | ReservationService | create_reservation(), confirm(), cancel(), release_expired() | 预约状态机逻辑 |
-| OrderService | checkout(), pay(), get_order_history() | 计费支付业务逻辑 |
+| OrderService | checkout(), pay(), get_order_history() | 车牌识别与无感支付、订单计费业务逻辑 |
 | AnalyticsService | get_turnover(), get_saturation(), get_revenue_trend() | 统计聚合逻辑 |
 
 ---
@@ -795,7 +758,7 @@ python-multipart==0.0.6
 - **评审结果**：✅ 通过
 - **架构合理性**：前后端分离架构清晰，模块划分合理
 - **技术可行性**：所选技术栈成熟稳定，零外部依赖
-- **可扩展性**：预留M12-M22扩展接口和数据表
+- **可扩展性**：18个一级业务模块均预留扩展接口和数据表，AI/GIS/支付/设备等能力可由模拟实现替换为真实服务
 - **安全性**：认证、授权、输入校验均有设计
 - **遗留问题**：无
 
@@ -809,7 +772,7 @@ python-multipart==0.0.6
 | AD-02 | 使用Session认证而非JWT | 单体应用，Session更简单直接 | SA | 6.1 |
 | AD-03 | 前端使用Vite而非Webpack | 更快构建、更好DX | SA | 6.1 |
 | AD-04 | 预约超时15分钟 | 行业常见做法，平衡用户体验和车位利用率 | PM+SA | 6.2 |
-| AD-05 | M12-M22采用模拟实现 | 实训环境无法部署真实AI/GIS/支付系统 | 全员 | 6.2 |
+| AD-05 | 高难度外部能力采用模拟实现 | 实训环境无法部署真实AI/GIS/支付/硬件系统 | 全员 | 6.2 |
 | AD-06 | 不使用Vuex，使用Pinia | Vue3官方推荐状态管理方案 | SA | 6.1 |
 
 ---
