@@ -28,7 +28,7 @@ DIAGRAM_DIR = HLD_DIR / "_generated_hld_diagrams"
 PROJECT_NAME = "AI-driven城市智慧停车管理与诱导系统"
 GROUP = "第19组"
 DOC_ID = "SmartPark-SD-HLD-001"
-DATE = "2026.06.04"
+DATE = "2026.06.05"
 
 MODULES = [
     ("M1", "路内停车位视觉检测", "P1", "模拟识别车位占用、违停和车牌，提供人工复核。", "roadside_detections, violations"),
@@ -50,6 +50,244 @@ MODULES = [
     ("M17", "城市停车监管平台", "P1", "展示城市停车态势、违停、收费和政策评估。", "analytics_snapshots, violations"),
     ("M18", "商圈停车联合营销", "P2", "配置优惠活动、停车券核销和效果统计。", "marketing_campaigns, coupons"),
 ]
+
+MODULE_DETAIL = {
+    "M1": {
+        "actor": "停车监管人员、停车场管理员",
+        "page": "路内泊位检测面板、检测结果列表、人工复核弹窗、违停证据详情页",
+        "service": "RoadsideDetectionService负责接收模拟识别结果，ViolationService负责违停记录归档和复核状态流转。",
+        "api": "POST /api/roadside/detections, GET /api/roadside/detections, PUT /api/violations/{id}/review",
+        "data": "roadside_detections保存泊位编号、识别状态、置信度、识别时间；violations保存车牌、位置、证据、复核状态。",
+        "flow": "系统按摄像头或模拟数据源生成泊位识别结果，低置信度记录进入人工复核；复核通过后同步更新车位状态或生成违停记录。",
+        "state": "detected、low_confidence、review_pending、confirmed、rejected。",
+        "error": "识别结果缺少车牌或置信度过低时不直接改变车位状态，而是进入review_pending并提示管理员复核。"
+    },
+    "M2": {
+        "actor": "停车场管理员、系统管理员",
+        "page": "停车场接入配置页、同步状态面板、离线告警列表、接入日志详情",
+        "service": "LotSyncService负责标准化接入、字段校验、空位数同步和离线告警；LotService负责车场基础信息维护。",
+        "api": "POST /api/lots, PUT /api/lots/{id}, POST /api/lots/{id}/sync, GET /api/lots/{id}/sync-logs",
+        "data": "parking_lots保存车场基础数据，parking_spots保存车位状态，sync_logs保存同步时间、结果和异常原因。",
+        "flow": "管理员配置车场和模拟接入参数后，系统周期性同步空位、价格和营业状态；同步失败时保留最近一次有效数据。",
+        "state": "active、inactive、syncing、sync_failed、offline。",
+        "error": "接口超时、字段缺失或空位数异常跳变时生成接入告警，页面标注最后更新时间。"
+    },
+    "M3": {
+        "actor": "车主、监管人员",
+        "page": "城市停车一张图、车场列表、筛选面板、车场详情、空位热度面板",
+        "service": "LotQueryService负责区域筛选、距离排序、价格排序和空位热度计算；MapAdapter在实训阶段使用模拟坐标。",
+        "api": "GET /api/lots/search, GET /api/lots/nearby, GET /api/lots/{id}/spots, GET /api/lots/hotspots",
+        "data": "parking_lots提供车场位置、价格和营业状态；parking_spots提供空闲、锁定、占用和不可用数量。",
+        "flow": "车主输入目的地后，系统按区域、距离、价格、空位数和更新时间聚合车场结果，并支持进入详情查看车位状态。",
+        "state": "normal、few_spots、full、closed、data_stale。",
+        "error": "查询无结果时展示附近区域推荐；模拟地图不可用时切换列表模式并保留筛选能力。"
+    },
+    "M4": {
+        "actor": "停车场管理员、诱导屏运维人员",
+        "page": "诱导屏管理页、发布内容编辑页、发布记录页、设备状态列表",
+        "service": "GuidePublishService负责根据车场空位、拥堵和设备在线状态生成诱导内容，并记录发布日志。",
+        "api": "GET /api/guide-screens, POST /api/guide-screens/publish, GET /api/guide-screens/publish-logs",
+        "data": "guide_screens保存屏幕位置和关联车场，publish_logs保存内容、发布时间、结果和失败原因。",
+        "flow": "系统根据空位阈值生成诱导文案，管理员确认后模拟发布到诱导屏；发布成功后更新屏幕当前内容。",
+        "state": "draft、publishing、published、failed、offline。",
+        "error": "诱导屏离线时不覆盖上一条有效内容，发布日志记录失败原因并进入设备告警。"
+    },
+    "M5": {
+        "actor": "车主、停车场管理员",
+        "page": "推荐车场列表、预约确认页、预约倒计时、到场确认页、预约记录页",
+        "service": "ReservationService负责车位锁定、预约确认、取消和超时释放；SpotService负责车位状态一致性。",
+        "api": "POST /api/reservations, PUT /api/reservations/{id}/confirm, PUT /api/reservations/{id}/cancel, POST /api/reservations/release-expired",
+        "data": "reservations保存预约用户、车位、状态和过期时间；parking_spots保存free/locked/occupied状态。",
+        "flow": "车主选择车位后创建预约，系统锁定车位15分钟；到场确认后进入停车订单流程，超时或取消则释放车位。",
+        "state": "created、locked、confirmed、cancelled、expired。",
+        "error": "并发预约导致车位状态变化时返回409，前端刷新车位网格并提示重新选择。"
+    },
+    "M6": {
+        "actor": "车主、停车场管理员",
+        "page": "入出场模拟页、订单详情页、支付确认页、异常订单处理页",
+        "service": "PlateRecognitionAdapter模拟车牌识别，OrderService生成订单并计费，PaymentAdapter模拟无感支付。",
+        "api": "POST /api/license-plate/events, GET /api/orders/{id}, POST /api/orders/{id}/checkout, POST /api/payments/mock",
+        "data": "vehicles保存车牌与用户关系，parking_orders保存入场、出场、金额和支付状态。",
+        "flow": "车辆入场时识别车牌并生成订单，出场时按停车时长、免费时长和价格规则计算费用，支付成功后释放车位。",
+        "state": "parking、pending_pay、paid、failed、manual_release。",
+        "error": "车牌无法识别时生成待人工确认订单；支付失败时订单保持pending_pay并允许重试。"
+    },
+    "M7": {
+        "actor": "停车场管理员、监管人员",
+        "page": "行为分析图表页、收入趋势页、周转率面板、导出报表页",
+        "service": "AnalyticsService负责按时间、车场、区域聚合停车时长、周转率、饱和度和收入趋势。",
+        "api": "GET /api/analytics/turnover, GET /api/analytics/revenue, GET /api/analytics/saturation, GET /api/analytics/export",
+        "data": "parking_orders提供订单样本，analytics_snapshots保存统计快照和统计口径。",
+        "flow": "系统从订单、车位和车场数据聚合指标，前端使用ECharts展示趋势、对比和异常峰值。",
+        "state": "calculated、sample_insufficient、stale、exporting。",
+        "error": "样本不足或异常订单过多时图表标注数据口径，不把取消预约和异常订单混入正常统计。"
+    },
+    "M8": {
+        "actor": "停车场管理员、运营人员",
+        "page": "动态定价规则页、价格预览页、调价日志页、规则启停页",
+        "service": "PricingService负责价格系数计算、规则冲突检查、价格预览和调价记录。",
+        "api": "POST /api/pricing-rules, PUT /api/pricing-rules/{id}, POST /api/pricing-rules/evaluate, GET /api/pricing-logs",
+        "data": "pricing_rules保存时段、车场、系数和启停状态，pricing_logs保存计算结果和调价原因。",
+        "flow": "管理员配置时段、热度和利用率条件，系统计算价格系数并在订单计费时读取有效规则。",
+        "state": "draft、enabled、disabled、conflict、expired。",
+        "error": "规则冲突或超过监管限价时禁止发布，提示冲突规则并保留原价格。"
+    },
+    "M9": {
+        "actor": "车位主、车主、平台管理员",
+        "page": "共享车位发布页、共享车位列表、共享预约页、收益统计页",
+        "service": "SharedSpotService负责共享时段发布、冲突校验、预约生成和收益汇总。",
+        "api": "POST /api/shared-spots, GET /api/shared-spots, POST /api/shared-spots/{id}/reservations, GET /api/shared-spots/income",
+        "data": "shared_spots保存共享车位、可用时段和价格，reservations保存共享预约关系。",
+        "flow": "车位主发布可共享时段，车主查询并预约，系统校验时段冲突并在完成后生成收益记录。",
+        "state": "published、reserved、in_use、closed、cancelled。",
+        "error": "共享时段冲突、车位主取消或用户爽约时更新预约状态，收益只统计完成订单。"
+    },
+    "M10": {
+        "actor": "新能源车主、停车场管理员",
+        "page": "充电车位列表、充电桩状态页、充电预约页、异常占用告警页",
+        "service": "ChargingService负责充电车位状态维护、故障标记、异常占用识别和充电预约。",
+        "api": "GET /api/charging-spots, POST /api/charging-spots/{id}/reserve, PUT /api/charging-piles/{id}/status",
+        "data": "charging_piles保存功率、故障和状态，parking_spots保存车位类型和占用状态。",
+        "flow": "车主查看充电车位并预约，管理员维护充电桩状态；故障或普通车辆占用时生成告警。",
+        "state": "available、reserved、charging、fault、occupied_abnormal。",
+        "error": "故障充电桩不可预约，燃油车占用充电车位时进入异常占用告警。"
+    },
+    "M11": {
+        "actor": "监管人员、停车场管理员",
+        "page": "违停证据列表、证据详情、审核处理页、统计页",
+        "service": "ViolationService负责模拟抓拍、证据归档、审核状态流转和监管汇总。",
+        "api": "POST /api/violations, GET /api/violations, GET /api/violations/{id}, PUT /api/violations/{id}/review",
+        "data": "violations保存车牌、位置、证据URL、违停时间和审核状态，review_logs保存复核意见。",
+        "flow": "系统生成模拟违停证据，管理员或监管人员复核，通过后进入监管统计，驳回则保留记录。",
+        "state": "pending_review、approved、rejected、archived。",
+        "error": "证据缺失、车牌冲突或位置不明确时不得通过审核，只能进入人工补充。"
+    },
+    "M12": {
+        "actor": "车主、停车场管理员",
+        "page": "月卡申请页、审批页、续费页、到期提醒页",
+        "service": "MonthlyCardService负责申请校验、审批、续费、到期提醒和临停规则切换。",
+        "api": "POST /api/monthly-cards, PUT /api/monthly-cards/{id}/approve, POST /api/monthly-cards/{id}/renew, GET /api/monthly-cards/alerts",
+        "data": "monthly_cards保存车牌、适用车场、有效期和审批状态，vehicles保存车辆绑定信息。",
+        "flow": "车主提交月卡申请，管理员审批后生效；系统在到期前提醒续费，过期后按临停规则计费。",
+        "state": "applied、approved、rejected、active、expired、renewed。",
+        "error": "车牌不一致、适用车场不匹配或月卡过期时不按月卡放行，并提示按临停规则处理。"
+    },
+    "M13": {
+        "actor": "停车场管理员、运营人员",
+        "page": "运营概览、车场管理、车位管理、订单管理、收入报表、异常处理页",
+        "service": "AdminService聚合车场、车位、订单、设备、收入和异常告警，提供管理端统一入口。",
+        "api": "GET /api/admin/dashboard, GET /api/admin/lots, GET /api/admin/orders, GET /api/admin/reports, PUT /api/admin/exceptions/{id}",
+        "data": "parking_lots、parking_spots、parking_orders、devices和analytics_snapshots共同支撑运营视图。",
+        "flow": "管理员进入运营概览后可查看关键指标、处理异常、导出报表，并进入各类资源管理页面。",
+        "state": "normal、warning、processing、resolved、exported。",
+        "error": "删除、调价、关闭车场等敏感操作必须二次确认并写入操作日志。"
+    },
+    "M14": {
+        "actor": "车主",
+        "page": "车主首页、搜索页、车场详情、预约页、支付页、停车记录、个人中心",
+        "service": "UserPortalService聚合车主端入口，调用车场、预约、订单、寻车和营销服务。",
+        "api": "GET /api/user/home, GET /api/user/profile, GET /api/user/records, GET /api/user/coupons",
+        "data": "users、vehicles、reservations、parking_orders和coupons共同组成车主端数据视图。",
+        "flow": "车主从首页进入搜索、预约、支付、寻车和优惠使用，所有关键状态通过卡片和标签明确展示。",
+        "state": "guest、logged_in、has_reservation、parking、pending_pay。",
+        "error": "登录失效、预约超时、支付失败和数据延迟均通过页面顶部提示和按钮状态反馈。"
+    },
+    "M15": {
+        "actor": "车主、停车场管理员",
+        "page": "反向寻车入口、车辆位置详情、楼层/区域指引、寻车记录页",
+        "service": "FindCarService根据进行中订单、车位区域和楼层信息生成可读路线。",
+        "api": "GET /api/find-car, GET /api/records/{id}/location, POST /api/find-car/manual-help",
+        "data": "parking_orders提供进行中停车记录，parking_spots提供楼层、区域和车位编号。",
+        "flow": "车主输入车牌或选择进行中订单，系统返回车辆所在楼层、区域、车位号和文字路线。",
+        "state": "located、not_found、manual_help_required。",
+        "error": "定位信息不足时提示联系管理员或进入人工问询，不返回虚假路线。"
+    },
+    "M16": {
+        "actor": "设备运维人员、停车场管理员",
+        "page": "设备台账、故障告警、维护记录、设备详情页",
+        "service": "DeviceService负责设备在线状态、故障等级、维护记录和心跳时间更新。",
+        "api": "GET /api/devices, PUT /api/devices/{id}/status, POST /api/devices/{id}/maintenance, GET /api/devices/alerts",
+        "data": "devices保存设备类型、位置、状态和心跳时间，maintenance_logs保存处理过程。",
+        "flow": "系统展示摄像头、道闸、诱导屏、充电桩等设备状态，运维人员处理告警并记录维护结果。",
+        "state": "online、offline、fault、maintenance、resolved。",
+        "error": "设备离线影响核心业务时，系统生成告警并触发降级策略，例如保留最近识别结果或禁止诱导发布。"
+    },
+    "M17": {
+        "actor": "交管监管人员、城市管理人员",
+        "page": "监管大屏、区域供需分析、违停治理、收费趋势、政策评估页",
+        "service": "RegulationService聚合多车场统计、区域饱和度、违停趋势和政策效果。",
+        "api": "GET /api/regulation/dashboard, GET /api/regulation/regions, GET /api/regulation/violations, GET /api/regulation/policy-effect",
+        "data": "analytics_snapshots、parking_lots、parking_orders和violations提供监管汇总数据。",
+        "flow": "监管端读取脱敏后的汇总数据，按区域、时间和指标展示停车供需、违停和收费趋势。",
+        "state": "normal、high_saturation、violation_risk、data_delay。",
+        "error": "监管请求涉及个人明细时执行脱敏，数据延迟时标注更新时间和统计口径。"
+    },
+    "M18": {
+        "actor": "商圈运营人员、车主、停车场管理员",
+        "page": "营销活动配置页、停车券列表、核销页、活动效果统计页",
+        "service": "MarketingService负责活动规则、停车券发放、核销和效果统计。",
+        "api": "POST /api/campaigns, GET /api/campaigns, POST /api/coupons/redeem, GET /api/campaigns/{id}/stats",
+        "data": "marketing_campaigns保存活动规则，coupons保存停车券状态，parking_orders关联核销订单。",
+        "flow": "运营人员配置活动，车主领取或使用停车券，出场支付时按规则抵扣并生成核销记录。",
+        "state": "draft、active、paused、expired、redeemed。",
+        "error": "优惠券过期、重复核销或不满足活动条件时拒绝抵扣并提示原因。"
+    },
+}
+
+CORE_TABLE_FIELDS = {
+    "users": [
+        ("id", "INTEGER", "主键", "用户唯一编号"),
+        ("username", "VARCHAR(50)", "唯一、非空", "登录用户名"),
+        ("password_hash", "VARCHAR(255)", "非空", "bcrypt密码哈希"),
+        ("phone", "VARCHAR(20)", "可空", "手机号"),
+        ("role", "VARCHAR(20)", "非空", "user/admin/owner/gov"),
+        ("created_at", "DATETIME", "默认当前时间", "注册时间"),
+    ],
+    "parking_lots": [
+        ("id", "INTEGER", "主键", "车场编号"),
+        ("name", "VARCHAR(100)", "唯一、非空", "车场名称"),
+        ("address", "VARCHAR(255)", "可空", "详细地址"),
+        ("region", "VARCHAR(50)", "可空", "行政区域"),
+        ("total_spots", "INTEGER", "非空", "总车位数"),
+        ("rate_per_hour", "DECIMAL(10,2)", "非空", "基础费率"),
+        ("status", "VARCHAR(20)", "默认active", "营业/离线/维护状态"),
+    ],
+    "parking_spots": [
+        ("id", "INTEGER", "主键", "车位编号"),
+        ("lot_id", "INTEGER", "外键", "所属车场"),
+        ("spot_number", "VARCHAR(20)", "非空", "车位号"),
+        ("floor", "VARCHAR(20)", "可空", "楼层"),
+        ("zone", "VARCHAR(20)", "可空", "区域"),
+        ("status", "VARCHAR(20)", "非空", "free/locked/occupied/disabled"),
+        ("spot_type", "VARCHAR(20)", "默认normal", "普通/充电/月卡/无障碍"),
+    ],
+    "reservations": [
+        ("id", "INTEGER", "主键", "预约编号"),
+        ("user_id", "INTEGER", "外键", "预约用户"),
+        ("spot_id", "INTEGER", "外键", "预约车位"),
+        ("status", "VARCHAR(20)", "非空", "created/confirmed/cancelled/expired"),
+        ("expire_at", "DATETIME", "非空", "锁定过期时间"),
+        ("confirm_at", "DATETIME", "可空", "到场确认时间"),
+    ],
+    "parking_orders": [
+        ("id", "INTEGER", "主键", "订单编号"),
+        ("user_id", "INTEGER", "外键", "用户编号"),
+        ("spot_id", "INTEGER", "外键", "停车车位"),
+        ("plate_number", "VARCHAR(20)", "可空", "车牌号"),
+        ("entry_time", "DATETIME", "非空", "入场时间"),
+        ("exit_time", "DATETIME", "可空", "出场时间"),
+        ("amount", "DECIMAL(10,2)", "可空", "应付金额"),
+        ("status", "VARCHAR(20)", "非空", "parking/pending_pay/paid/exception"),
+    ],
+    "devices": [
+        ("id", "INTEGER", "主键", "设备编号"),
+        ("lot_id", "INTEGER", "外键", "所属车场"),
+        ("device_type", "VARCHAR(30)", "非空", "camera/gate/screen/charger"),
+        ("status", "VARCHAR(20)", "非空", "online/offline/fault/maintenance"),
+        ("last_heartbeat", "DATETIME", "可空", "最近心跳时间"),
+        ("remark", "TEXT", "可空", "故障或维护备注"),
+    ],
+}
 
 
 def set_run(run, size=10.5, bold=False, font="宋体", color=None):
@@ -165,6 +403,68 @@ def add_table(doc, headers, rows):
             set_cell(cells[col], value, size=8.8)
     doc.add_paragraph()
     return table
+
+
+def add_module_expansion(doc):
+    add_heading(doc, "2.2.2.3 18个一级模块详细展开", 4)
+    add_para(doc, "本节按照教师任务图要求，对18个一级业务模块逐一展开设计。每个模块均说明使用角色、页面入口、后端服务、接口、数据对象、主流程、状态流转、异常处理和验收关注点，保证后续编码时能直接从模块设计追踪到接口、数据表和测试用例。")
+    for index, (mid, name, priority, summary, objects) in enumerate(MODULES, start=1):
+        detail = MODULE_DETAIL[mid]
+        add_heading(doc, f"2.2.2.3.{index} {mid} {name}", 4)
+        add_para(doc, f"{mid}属于{priority}优先级模块。模块目标是：{summary}该模块与数据对象 {objects} 直接相关，并通过统一接口返回格式与车主端、管理端或监管端页面联动。")
+        add_para(doc, f"设计边界：{detail['actor']}是该模块的主要使用者；前端通过{detail['page']}承载业务操作；后端由{detail['service']}模块内部只处理本模块业务状态，不把登录、通用表格、图表渲染等支撑能力误列为额外一级模块。")
+        add_para(doc, f"业务流程：{detail['flow']}状态口径为{detail['state']}。接口层负责身份校验、参数校验和错误码返回，服务层负责业务规则与状态流转，数据访问层负责事务提交和一致性保护。")
+        add_table(
+            doc,
+            ["设计项", "详细说明"],
+            [
+                ("使用角色", detail["actor"]),
+                ("页面/交互", detail["page"]),
+                ("后端服务", detail["service"]),
+                ("主要接口", detail["api"]),
+                ("数据对象", detail["data"]),
+                ("主流程", detail["flow"]),
+                ("状态流转", detail["state"]),
+                ("异常处理", detail["error"]),
+                ("验收关注", f"测试用例需覆盖正常流程、异常输入、权限拦截、状态变化、数据库记录和页面提示；该模块优先级为{priority}，应在第4周编码计划中按优先级拆分。"),
+            ],
+        )
+        add_para(doc, f"实现补充：{mid}在演示阶段应准备至少3组正常数据、1组边界数据和1组异常数据。页面需要展示当前状态和最近更新时间；接口需要返回可读msg；数据库记录需要保留创建时间、更新时间和处理人，便于日报、周报和测试记录中追踪。")
+        add_para(doc, f"页面细化：{name}的页面不只展示静态信息，还需要体现查询条件、当前状态、操作入口和异常反馈。列表型页面应包含关键字搜索、状态筛选、分页、详情入口和刷新时间；表单型页面应包含必填校验、提交确认、取消返回和提交结果提示；审核型页面应保留审核意见、处理人和处理时间。")
+        add_para(doc, f"接口细化：{mid}相关接口入参应包含业务对象ID、当前用户身份、分页/筛选参数和必要的状态字段；出参应包含业务数据、状态标签、更新时间和错误提示。对修改类接口，后端需在服务层再次读取数据库当前状态，避免前端缓存状态导致误操作。")
+        add_para(doc, f"数据一致性：{mid}涉及的数据对象为{objects}。设计时要求页面状态、接口返回和数据库记录三者一致；当业务状态发生变化时，服务层必须先完成状态校验，再写入数据表，最后返回统一响应。对于影响预约、订单、支付、设备和监管统计的操作，需要写入操作日志。")
+        add_table(
+            doc,
+            ["扩展设计点", "设计要求", "落地说明"],
+            [
+                ("页面控件", "搜索、筛选、详情、提交、取消、刷新、状态标签", f"{mid}页面根据角色显示不同按钮，禁止无权限操作直接出现在可提交状态。"),
+                ("接口入参", "业务ID、用户身份、筛选条件、目标状态、备注", "修改类接口必须携带目标对象ID，批量操作需传入ID列表并逐项返回结果。"),
+                ("接口出参", "code、msg、data、状态、更新时间", "错误时data可返回错误字段、冲突对象或建议下一步操作。"),
+                ("数据库写入", "状态字段、时间字段、操作人、备注", "关键状态变化必须留痕，避免演示和测试时无法解释数据来源。"),
+                ("权限控制", "车主、管理员、监管人员按角色访问", "车主只能访问本人数据，管理员访问所属车场，监管端访问脱敏汇总数据。"),
+                ("异常反馈", "前端可读提示 + 后端错误码", detail["error"]),
+            ],
+        )
+        add_table(
+            doc,
+            ["测试编号", "测试场景", "预期结果"],
+            [
+                (f"TC-{mid}-01", "正常查询/打开页面", "页面加载成功，列表或详情数据与数据库模拟数据一致"),
+                (f"TC-{mid}-02", "正常新增/提交/发布/确认", "接口返回code=0，数据库新增记录或状态正确变化"),
+                (f"TC-{mid}-03", "异常输入或缺少必填字段", "接口返回400，前端展示字段级提示，不写入错误数据"),
+                (f"TC-{mid}-04", "权限不足访问", "接口返回401或403，前端提示登录或无权操作"),
+                (f"TC-{mid}-05", f"{detail['error']}", "系统保留可追踪记录，页面提示清晰，核心状态不被错误覆盖"),
+            ],
+        )
+
+
+def add_database_field_expansion(doc):
+    add_heading(doc, "3.2.1 核心数据表字段展开", 3)
+    add_para(doc, "以下字段设计用于支撑18个一级模块的编码落地。正式编码时可在不改变业务含义的前提下补充索引、默认值和审计字段，但不得删除影响需求追踪的关键字段。")
+    for table_name, rows in CORE_TABLE_FIELDS.items():
+        add_heading(doc, f"3.2.1 {table_name} 表字段说明", 4)
+        add_table(doc, ["字段名", "类型", "约束", "说明"], rows)
+        add_para(doc, f"{table_name}表的设计重点是保证业务状态可追踪。新增或更新记录时应写入更新时间，关键状态变化由服务层统一处理，避免页面直接拼接SQL造成状态不一致。")
 
 
 def load_font(size=26, bold=False):
@@ -351,7 +651,7 @@ def fill_front_matter(doc):
             ("2026.06.03", "V0.1", "N/A", "1-2", "根据SRS V1.0完成HLD简介、系统上下文和系统结构设计", "程晓洋（SA）"),
             ("2026.06.03", "V0.2", "N/A", "2.2", "补充系统架构图、业务流程活动图和模块分解", "全员"),
             ("2026.06.04", "V0.3", "DR-01~DR-06", "2-4", "补充核心业务时序图、接口定义、ER图、表结构和核心界面说明", "程晓洋（SA）"),
-            ("2026.06.04", "V1.0", "N/A", "全部", "按概要设计模板形成正式提交版", "第19组"),
+            ("2026.06.05", "V1.0", "DR-07~DR-10", "5/全部", "补充出错处理设计，完成全员设计评审并形成正式提交版", "第19组"),
         ],
     )
     rebuild_table(
@@ -403,6 +703,12 @@ def update_toc(doc):
         "4.2 管理端核心界面",
         "4.3 监管端核心界面",
         "5 出错处理设计",
+        "5.1 出错处理目标",
+        "5.2 错误分类与处理策略",
+        "5.3 统一错误码",
+        "5.4 关键业务异常流程",
+        "5.5 日志、告警与恢复",
+        "5.6 设计评审与发布结论",
     ]
     start = None
     end = None
@@ -450,7 +756,7 @@ def add_body(doc):
     add_heading(doc, "1.2.3 软件应用", 3)
     add_para(doc, "软件应用于城市停车资源查询、车位预约、停车场运营、违停监管、设备运维和商圈营销等教学实训场景。实训环境下不依赖真实AI模型、GIS地图、支付通道和硬件设备，而是通过模拟接口、状态字段、初始数据和可视化页面完成业务闭环。")
     add_heading(doc, "1.3 参考资料", 2)
-    for item in ["《功能需求规格说明书 SRS V1.0》", "《软件开发计划 V1.0》", "《项目立项报告 V1.0》", "教师发布的第三周项目任务作业与每日任务截图（2026.06.01-2026.06.04）"]:
+    for item in ["《功能需求规格说明书 SRS V1.0》", "《软件开发计划 V1.0》", "《项目立项报告 V1.0》", "教师发布的第三周项目任务作业与每日任务截图（2026.06.01-2026.06.05）"]:
         add_bullet(doc, item)
 
     add_heading(doc, "2 概要设计", 1)
@@ -494,6 +800,7 @@ def add_body(doc):
     add_para(doc, "功能实现说明：车辆入场时系统根据车牌与预约状态生成订单；出场时按费率、免费时长和动态定价规则计算金额；模拟支付成功后订单完成并释放车位。")
     add_heading(doc, "2.2.2.2 P1/P2增强与扩展模块", 4)
     add_para(doc, "P1模块重点服务监管、分析和运营提效，P2模块采用模拟数据、状态字段和预留接口完成扩展表达。所有模块都通过统一API、统一错误码和统一数据字典与核心闭环联动。")
+    add_module_expansion(doc)
     add_heading(doc, "2.2.3 接口描述", 3)
     add_para(doc, "接口统一采用HTTP/1.1 + RESTful JSON，统一响应格式为 {code, msg, data}。code=0表示成功，400表示参数错误，401表示未登录，403表示无权限，404表示资源不存在，500表示服务端异常。")
     add_table(
@@ -539,6 +846,7 @@ def add_body(doc):
             ("analytics_snapshots", "统计指标快照", "id, lot_id, metric_type, metric_value, snapshot_at"),
         ],
     )
+    add_database_field_expansion(doc)
     add_heading(doc, "3.3 存储过程设计", 2)
     add_para(doc, "实训阶段使用SQLite，不设计数据库存储过程。预约超时释放、统计聚合和价格计算由后端服务层定时任务或接口逻辑实现。")
     add_heading(doc, "3.4 视图设计", 2)
@@ -595,20 +903,72 @@ def add_body(doc):
     )
 
     add_heading(doc, "5 出错处理设计", 1)
+    add_heading(doc, "5.1 出错处理目标", 2)
+    add_para(doc, "出错处理设计用于保证系统在参数错误、权限不足、数据冲突、设备离线、模拟接口失败和支付异常等情况下仍能给出明确反馈，并尽量保持核心业务状态一致。系统采用“前端提示 + 后端校验 + 数据状态保护 + 操作日志记录”的组合策略，使异常可发现、可定位、可恢复、可复盘。")
+    add_para(doc, "本系统的出错处理范围覆盖车主端、管理端、监管端、后端服务、数据库访问和外部模拟能力。车主端重点保证用户知道下一步如何处理；管理端重点保证异常可进入人工处理；后端重点保证接口返回统一、状态不被错误写入；数据库重点保证预约、订单、车位和支付状态不会相互矛盾。")
+    add_heading(doc, "5.2 错误分类与处理策略", 2)
     add_table(
         doc,
-        ["错误场景", "处理策略", "用户/管理员提示"],
+        ["错误场景", "触发条件", "处理策略", "用户/管理员提示"],
         [
-            ("未登录或权限不足", "接口返回401/403，前端跳转登录或提示无权限", "请先登录/无权执行该操作"),
-            ("预约车位已被占用", "事务内重新校验车位状态，不创建预约", "车位已不可预约，请重新选择"),
-            ("预约超时", "定时任务释放车位并更新预约状态", "预约已超时，车位已释放"),
-            ("模拟支付失败", "订单保持待支付，允许重试或人工处理", "支付失败，请重试或联系管理员"),
-            ("设备/诱导屏离线", "保留最近一次有效状态并生成告警", "设备离线，已记录告警"),
-            ("外部模拟接口异常", "降级使用缓存/初始数据，记录日志", "数据暂不可用，展示最近一次结果"),
-            ("监管数据敏感", "汇总脱敏后展示，不暴露个人手机号和完整车牌", "仅展示汇总统计"),
+            ("输入参数错误", "必填字段为空、格式不合法、分页参数越界", "后端Pydantic校验失败后返回400；前端表单同步提示错误字段", "请检查输入内容"),
+            ("未登录或权限不足", "Session失效、普通用户访问管理接口、监管数据越权", "接口返回401/403，前端跳转登录或提示无权限；管理操作不落库", "请先登录/无权执行该操作"),
+            ("预约车位已被占用", "创建预约前车位状态由free变为locked/occupied", "事务内重新校验车位状态，不创建预约；刷新车位列表", "车位已不可预约，请重新选择"),
+            ("预约超时", "锁定时间超过15分钟且未确认到场", "定时任务释放车位并更新预约状态为expired；保留预约记录", "预约已超时，车位已释放"),
+            ("模拟支付失败", "支付适配器返回失败、金额异常、订单已关闭", "订单保持pending_pay状态，允许重试或人工处理；不释放车位直到流程确认", "支付失败，请重试或联系管理员"),
+            ("设备/诱导屏离线", "设备心跳超时、发布诱导内容失败", "保留最近一次有效状态并生成告警；发布失败时不覆盖原内容", "设备离线，已记录告警"),
+            ("外部模拟接口异常", "AI/GIS/支付/硬件模拟服务不可用或返回空数据", "降级使用缓存/初始数据，记录日志；页面标注更新时间", "数据暂不可用，展示最近一次结果"),
+            ("监管数据敏感", "监管端请求包含个人手机号、完整车牌或用户明细", "汇总脱敏后展示，不暴露个人手机号和完整车牌", "仅展示汇总统计"),
         ],
     )
-    add_para(doc, "日志策略：关键操作记录操作者、时间、对象、原状态、新状态和结果；异常日志记录接口路径、错误码和处理方式，便于测试阶段复盘。")
+    add_heading(doc, "5.3 统一错误码", 2)
+    add_para(doc, "所有接口返回结构统一为 {code, msg, data}。成功时code=0，失败时code使用固定枚举，msg给出可读提示，data可携带错误字段、重试建议或异常追踪编号。前端Axios拦截器根据错误码统一处理登录失效、权限不足、参数错误和服务异常。")
+    add_table(
+        doc,
+        ["错误码", "含义", "适用场景", "前端处理"],
+        [
+            ("0", "成功", "接口正常完成", "更新页面状态"),
+            ("400", "参数错误", "表单字段为空、格式错误、范围越界", "展示字段级提示"),
+            ("401", "未登录/登录失效", "Session不存在或过期", "跳转登录页"),
+            ("403", "无权限", "角色不匹配、越权访问", "提示无权操作"),
+            ("404", "资源不存在", "车位、订单、预约、设备不存在", "提示重新刷新"),
+            ("409", "状态冲突", "车位被占、预约已取消、订单已支付", "刷新业务状态并提示重试"),
+            ("429", "操作过于频繁", "短时间重复预约、重复支付、重复提交", "限制按钮并提示稍后再试"),
+            ("500", "服务端异常", "数据库异常、服务逻辑异常", "展示通用错误并记录追踪号"),
+            ("503", "外部模拟服务不可用", "AI/GIS/支付/设备模拟接口失败", "展示缓存数据或降级提示"),
+        ],
+    )
+    add_heading(doc, "5.4 关键业务异常流程", 2)
+    add_table(
+        doc,
+        ["业务流程", "异常点", "处理步骤", "状态结果"],
+        [
+            ("车主预约车位", "车位被并发预约", "重新读取车位状态；若非free则拒绝创建预约；返回409；前端刷新车位网格", "无新预约，车位状态以数据库为准"),
+            ("预约到场确认", "预约已超时", "校验expire_at；超时则更新预约为expired并释放车位；提示重新预约", "reservation=expired, spot=free"),
+            ("车牌入场", "车牌无法识别或无预约", "生成待人工确认记录；允许管理员补录车牌或绑定订单", "order=pending_confirm"),
+            ("出场计费", "订单缺少入场时间或费率异常", "拒绝结算；写入异常日志；管理员修正订单数据后重试", "order=exception"),
+            ("模拟支付", "支付失败或重复支付", "失败保持待支付；重复支付返回409并读取已有支付结果", "order=pending_pay或paid"),
+            ("诱导信息发布", "诱导屏离线", "不覆盖上一条有效发布内容；生成设备告警；记录发布时间和失败原因", "publish_log=failed"),
+            ("违停取证审核", "证据不足或车牌冲突", "进入人工复核状态；不进入监管确认列表", "violation=pending_review"),
+        ],
+    )
+    add_heading(doc, "5.5 日志、告警与恢复", 2)
+    add_para(doc, "日志策略：关键操作记录操作者、时间、接口路径、对象ID、原状态、新状态、处理结果和错误码；异常日志记录请求参数摘要、异常类型、追踪编号和处理方式，便于测试阶段复盘。日志不保存明文密码、完整支付信息和不必要的个人敏感信息。")
+    add_para(doc, "告警策略：设备离线、接口同步失败、支付失败、预约状态冲突、统计数据异常和诱导发布失败均进入告警列表。告警等级分为提示、重要、严重三级；管理端支持筛选、处理、备注和关闭。")
+    add_para(doc, "恢复策略：系统优先通过重新读取数据库状态恢复页面；对外部模拟能力失败采用最近一次有效数据或初始化数据降级；对预约、订单、支付等核心状态冲突，不做静默覆盖，由服务层返回错误码并要求用户或管理员重新确认。")
+    add_heading(doc, "5.6 设计评审与发布结论", 2)
+    add_para(doc, "2026年6月5日由系统架构师程晓洋组织全员设计评审，程子浩以RA/QA视角检查需求到设计的追踪关系，丁梓钊以PM/前端视角检查页面、交互和异常提示是否满足用户场景。评审重点围绕HLD完整性、出错处理、接口一致性、数据库状态一致性和第4周编码可执行性展开。")
+    add_table(
+        doc,
+        ["编号", "评审项", "结论", "处理结果"],
+        [
+            ("DR-07", "HLD是否覆盖6月3日和6月4日任务要求", "通过", "上下文图、架构图、活动图、时序图、接口、ER/表结构和界面设计已整合"),
+            ("DR-08", "第5章出错处理是否支撑核心业务闭环", "通过", "补充错误分类、错误码、预约/支付/设备等关键异常流程"),
+            ("DR-09", "SRS 18个一级模块是否可追踪到HLD模块、接口和数据表", "通过", "模块分解表、接口清单和数据库表设计保持一致"),
+            ("DR-10", "第4周编码是否具备明确输入", "通过", "已明确前后端分工、P0优先级和异常处理约束"),
+        ],
+    )
+    add_para(doc, "评审结论：HLD V1.0通过小组设计评审，可作为第4周详细设计、编码实现和测试用例编写依据；系统设计提交至QQ群“04_系统设计”目录。")
 
 
 def build():

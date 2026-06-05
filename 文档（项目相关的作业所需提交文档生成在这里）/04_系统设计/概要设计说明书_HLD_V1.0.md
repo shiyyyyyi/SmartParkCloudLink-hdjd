@@ -7,7 +7,7 @@
 > **课程**：软件工程实训(A)（1521190120）| 第3周
 > **小组**：第19组
 > **编写人**：程晓洋（SA/系统架构师）、程子浩、丁梓钊
-> **设计日期**：2026年6月2日
+> **设计日期**：2026年6月5日
 > **版本**：V1.0
 
 ---
@@ -18,7 +18,8 @@
 |:---:|------|------|------|
 | V0.1 | 2026.06.01 | 程晓洋（SA） | 初稿：系统架构设计、技术选型、模块划分 |
 | V0.2 | 2026.06.02 | 全员 | 设计评审，补充接口设计、数据库ER图、部署架构 |
-| V1.0 | 2026.06.02 | 程晓洋（SA） | 正式版发布 |
+| V0.3 | 2026.06.04 | 程晓洋（SA） | 按模板整合系统上下文、架构图、活动图、时序图、接口、数据库和界面设计 |
+| V1.0 | 2026.06.05 | 第19组 | 补充HLD第5章出错处理设计，完成全员设计评审并正式发布 |
 
 ---
 
@@ -736,13 +737,51 @@ python-multipart==0.0.6
 
 ---
 
-## 第十章 设计评审结论
+## 第十章 出错处理设计（对应模板HLD第5章）
 
-> **评审日期**：2026年6月2日
+### 10.1 出错处理目标
+
+系统采用"前端提示 + 后端校验 + 数据状态保护 + 操作日志记录"的组合策略，使参数错误、权限不足、预约冲突、支付失败、设备离线和外部模拟接口异常等情况可发现、可定位、可恢复、可复盘。
+
+### 10.2 统一错误码
+
+| 错误码 | 含义 | 处理口径 |
+|:---:|------|------|
+| 0 | 成功 | 更新页面状态 |
+| 400 | 参数错误 | 表单字段级提示 |
+| 401 | 未登录/登录失效 | 跳转登录页 |
+| 403 | 无权限 | 提示无权操作 |
+| 404 | 资源不存在 | 提示刷新或重新选择 |
+| 409 | 状态冲突 | 刷新业务状态并提示重试 |
+| 429 | 操作过于频繁 | 限制按钮并提示稍后再试 |
+| 500 | 服务端异常 | 展示通用错误并记录追踪号 |
+| 503 | 外部模拟服务不可用 | 展示缓存数据或降级提示 |
+
+### 10.3 关键异常流程
+
+| 业务流程 | 异常点 | 处理方式 |
+|------|------|------|
+| 车主预约车位 | 车位被并发预约 | 重新读取车位状态，返回409，前端刷新车位网格 |
+| 预约到场确认 | 预约已超时 | 更新预约为expired并释放车位 |
+| 车牌入场 | 车牌无法识别或无预约 | 生成待人工确认记录 |
+| 出场计费 | 订单缺少入场时间或费率异常 | 拒绝结算并进入异常订单处理 |
+| 模拟支付 | 支付失败或重复支付 | 保持待支付或返回已有支付结果 |
+| 诱导信息发布 | 诱导屏离线 | 不覆盖上一条有效内容并生成设备告警 |
+| 违停取证审核 | 证据不足或车牌冲突 | 进入人工复核状态 |
+
+### 10.4 日志、告警与恢复
+
+关键操作记录操作者、时间、接口路径、对象ID、原状态、新状态、处理结果和错误码。设备离线、接口同步失败、支付失败、预约状态冲突、统计数据异常和诱导发布失败均进入告警列表。系统优先通过重新读取数据库状态恢复页面，对外部模拟能力失败采用最近一次有效数据或初始化数据降级。
+
+---
+
+## 第十一章 设计评审结论
+
+> **评审日期**：2026年6月5日
 > **评审方式**：小组设计评审会议（全员参与）
 > **评审角色**：SA（程晓洋）、RA（程子浩）、PM（丁梓钊）
 
-### 10.1 评审发现
+### 11.1 评审发现
 
 | 编号 | 类型 | 发现 | 处理方式 |
 |:---:|:---:|------|------|
@@ -751,15 +790,20 @@ python-multipart==0.0.6
 | DR-03 | 确认 | 前端路由设计覆盖所有功能模块 | ✅ 已确认 |
 | DR-04 | 确认 | API端点设计覆盖所有业务需求 | ✅ 已确认 |
 | DR-05 | 确认 | 数据库设计满足6张核心表+扩展预留 | ✅ 已确认 |
-| DR-06 | 建议 | 建议增加API统一错误码表 | ✅ 已在5.1.1节定义 |
+| DR-06 | 建议 | 建议增加API统一错误码表 | ✅ 已在出错处理设计章节补充 |
+| DR-07 | 确认 | HLD已覆盖6月3日和6月4日任务要求 | ✅ 上下文图、架构图、活动图、时序图、接口、ER/表结构和界面设计已整合 |
+| DR-08 | 建议 | HLD最后章节需补充出错处理设计 | ✅ 已补充错误分类、统一错误码、关键异常流程、日志告警与恢复策略 |
+| DR-09 | 确认 | SRS 18个一级模块需可追踪到HLD模块、接口和数据表 | ✅ 已通过模块分解表、接口清单和数据库表设计确认 |
+| DR-10 | 确认 | 第4周编码是否具备明确输入 | ✅ 已确认P0优先级、前后端分工和异常处理约束 |
 
-### 10.2 评审结论
+### 11.2 评审结论
 
 - **评审结果**：✅ 通过
 - **架构合理性**：前后端分离架构清晰，模块划分合理
 - **技术可行性**：所选技术栈成熟稳定，零外部依赖
 - **可扩展性**：18个一级业务模块均预留扩展接口和数据表，AI/GIS/支付/设备等能力可由模拟实现替换为真实服务
 - **安全性**：认证、授权、输入校验均有设计
+- **出错处理**：预约冲突、预约超时、支付失败、设备离线、外部模拟接口异常和监管数据脱敏均有处理策略
 - **遗留问题**：无
 
 ---
@@ -781,17 +825,26 @@ python-multipart==0.0.6
 
 | 模块 | 涉及API端点 | 数据表 |
 |:---:|------|------|
-| M1 | /api/auth/* (6个) | users |
-| M2 | /api/lots (5个) + /api/lots/{id}/spots/batch | parking_lots |
+| M1 | /api/roadside/detections, /api/violations/review | roadside_detections, violations |
+| M2 | /api/lots, /api/lots/{id}/sync | parking_lots, sync_logs |
 | M3 | /api/lots/search, /api/lots/nearby, /api/lots/{id}/spots | parking_lots, parking_spots |
-| M4 | /api/reservations/* (5个) | reservations, parking_spots |
-| M5 | /api/orders/* (4个) | parking_orders, parking_spots |
-| M6 | /api/records/* (3个) | parking_orders, parking_spots |
-| M7 | /api/home/stats (聚合) | 多表聚合 |
-| M8 | /api/admin/* (5个) | parking_lots, parking_spots, parking_orders |
-| M9 | /api/analytics/* (6个) | parking_orders, parking_spots, users |
+| M4 | /api/guide-screens/publish | guide_screens, publish_logs |
+| M5 | /api/reservations, /api/reservations/{id}/confirm, /api/reservations/{id}/cancel | reservations, parking_spots |
+| M6 | /api/license-plate/events, /api/payments/mock | vehicles, parking_orders |
+| M7 | /api/analytics/parking-behavior | parking_orders, analytics_snapshots |
+| M8 | /api/pricing-rules, /api/pricing-rules/evaluate | pricing_rules, pricing_logs |
+| M9 | /api/shared-spots, /api/shared-spots/{id}/reservations | shared_spots, reservations |
+| M10 | /api/charging-spots, /api/charging-piles/{id}/status | charging_piles, parking_spots |
+| M11 | /api/violations, /api/violations/{id}/review | violations, review_logs |
+| M12 | /api/monthly-cards, /api/monthly-cards/{id}/renew | monthly_cards, vehicles |
+| M13 | /api/admin/lots, /api/admin/orders, /api/admin/reports | parking_lots, parking_orders, devices |
+| M14 | /api/user/home, /api/user/profile, /api/user/records | users, vehicles, reservations |
+| M15 | /api/find-car, /api/records/{id}/location | parking_orders, parking_spots |
+| M16 | /api/devices, /api/devices/{id}/maintenance | devices, maintenance_logs |
+| M17 | /api/regulation/dashboard, /api/regulation/violations | analytics_snapshots, violations |
+| M18 | /api/campaigns, /api/coupons/redeem | marketing_campaigns, coupons |
 
 ---
 
 *文档结束 — HLD V1.0*
-*编写：第19组 | 2026年6月2日*
+*编写：第19组 | 2026年6月5日*
