@@ -1,31 +1,26 @@
 """订单/支付模块 API (M6 车牌识别与无感支付)"""
 from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
-import jwt, datetime, random
+import datetime, random
 
 from database import get_db
 from models import User, ParkingLot, ParkingSpot, Order, Reservation, SpotStatus, OrderStatus, ReservationStatus
+from utils import get_current_token, decode_user_id
 
 router = APIRouter(prefix="/api", tags=["订单/支付"])
-SECRET_KEY = "smart-park-secret-key-2026-32bytes!x"
-ALGORITHM = "HS256"
 
 
-def get_user_id(token: str = None) -> int:
-    try:
-        return jwt.decode(token or "", SECRET_KEY, algorithms=[ALGORITHM])["user_id"]
-    except:
-        return 0
+def get_user_id(token: str = "") -> int:
+    return decode_user_id(token)
 
 
 # ===== 车牌识别模拟 (M6) =====
 @router.post("/license-plate/events")
-def license_plate_event(req: dict, db: Session = Depends(get_db)):
+def license_plate_event(req: dict, token: str = Depends(get_current_token), db: Session = Depends(get_db)):
     """模拟入/出场车牌识别"""
     lot_id = req.get("lot_id")
     plate_number = req.get("plate_number")
     event_type = req.get("event_type")  # "entry" / "exit"
-    token = req.get("token")
 
     user_id = get_user_id(token)
     lot = db.query(ParkingLot).filter(ParkingLot.id == lot_id).first()
@@ -81,7 +76,7 @@ def license_plate_event(req: dict, db: Session = Depends(get_db)):
 
 # ===== 订单 =====
 @router.get("/orders/my")
-def my_orders(token: str = None, status: str = None, db: Session = Depends(get_db)):
+def my_orders(token: str = Depends(get_current_token), status: str = None, db: Session = Depends(get_db)):
     user_id = get_user_id(token)
     if not user_id:
         return {"code": 401, "msg": "请先登录"}
@@ -103,7 +98,7 @@ def my_orders(token: str = None, status: str = None, db: Session = Depends(get_d
 
 
 @router.get("/orders/{order_id}")
-def order_detail(order_id: int, token: str = None, db: Session = Depends(get_db)):
+def order_detail(order_id: int, token: str = Depends(get_current_token), db: Session = Depends(get_db)):
     o = db.query(Order).filter(Order.id == order_id).first()
     if not o:
         return {"code": 404, "msg": "订单不存在"}
@@ -118,7 +113,7 @@ def order_detail(order_id: int, token: str = None, db: Session = Depends(get_db)
 
 
 @router.post("/orders/{order_id}/pay")
-def pay_order(order_id: int, token: str = None, db: Session = Depends(get_db)):
+def pay_order(order_id: int, token: str = Depends(get_current_token), db: Session = Depends(get_db)):
     """模拟支付"""
     o = db.query(Order).filter(Order.id == order_id).first()
     if not o:
@@ -142,7 +137,7 @@ def pay_order(order_id: int, token: str = None, db: Session = Depends(get_db)):
 
 # ===== 停车记录 =====
 @router.get("/records/my")
-def my_records(token: str = None, db: Session = Depends(get_db)):
+def my_records(token: str = Depends(get_current_token), db: Session = Depends(get_db)):
     user_id = get_user_id(token)
     if not user_id:
         return {"code": 401, "msg": "请先登录"}
@@ -159,7 +154,7 @@ def my_records(token: str = None, db: Session = Depends(get_db)):
 
 
 @router.get("/records/{record_id}")
-def record_detail(record_id: int, token: str = None, db: Session = Depends(get_db)):
+def record_detail(record_id: int, token: str = Depends(get_current_token), db: Session = Depends(get_db)):
     o = db.query(Order).filter(Order.id == record_id).first()
     if not o:
         return {"code": 404, "msg": "记录不存在"}
@@ -174,7 +169,7 @@ def record_detail(record_id: int, token: str = None, db: Session = Depends(get_d
 
 # ===== 反向寻车 =====
 @router.get("/find-car")
-def find_car(plate_number: str, token: str = None, db: Session = Depends(get_db)):
+def find_car(plate_number: str, token: str = Depends(get_current_token), db: Session = Depends(get_db)):
     order = db.query(Order).filter(
         Order.plate_number == plate_number,
         Order.status.in_([OrderStatus.PARKING.value, OrderStatus.PENDING_PAY.value])

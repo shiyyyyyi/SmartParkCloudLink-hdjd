@@ -7,11 +7,10 @@ import jwt, datetime
 from database import get_db
 from models import User, UserRole
 from schemas import UserRegister, UserLogin, UserInfo, UserUpdate, PasswordUpdate
+from utils import get_current_token, decode_user_id, SECRET_KEY, ALGORITHM
 
 router = APIRouter(prefix="/api/auth", tags=["认证"])
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
-SECRET_KEY = "smart-park-secret-key-2026-32bytes!x"
-ALGORITHM = "HS256"
 
 
 def create_token(user_id: int, username: str) -> str:
@@ -61,7 +60,7 @@ def login(req: UserLogin, db: Session = Depends(get_db)):
 
 
 @router.get("/me")
-def get_me(token: str = None, db: Session = Depends(get_db)):
+def get_me(token: str = Depends(get_current_token), db: Session = Depends(get_db)):
     try:
         payload = jwt.decode(token or "", SECRET_KEY, algorithms=[ALGORITHM])
         user = db.query(User).filter(User.id == payload["user_id"]).first()
@@ -73,7 +72,7 @@ def get_me(token: str = None, db: Session = Depends(get_db)):
 
 
 @router.put("/profile")
-def update_profile(req: UserUpdate, token: str = None, db: Session = Depends(get_db)):
+def update_profile(req: UserUpdate, token: str = Depends(get_current_token), db: Session = Depends(get_db)):
     try:
         payload = jwt.decode(token or "", SECRET_KEY, algorithms=[ALGORITHM])
         user = db.query(User).filter(User.id == payload["user_id"]).first()
@@ -88,7 +87,7 @@ def update_profile(req: UserUpdate, token: str = None, db: Session = Depends(get
 
 
 @router.put("/password")
-def update_password(req: PasswordUpdate, token: str = None, db: Session = Depends(get_db)):
+def update_password(req: PasswordUpdate, token: str = Depends(get_current_token), db: Session = Depends(get_db)):
     try:
         payload = jwt.decode(token or "", SECRET_KEY, algorithms=[ALGORITHM])
         user = db.query(User).filter(User.id == payload["user_id"]).first()

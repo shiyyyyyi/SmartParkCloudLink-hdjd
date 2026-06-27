@@ -2,29 +2,26 @@
 from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
 from sqlalchemy import func, extract
-import jwt, datetime
+import datetime
 
 from database import get_db
 from models import User, ParkingLot, Order, SpotStatus, OrderStatus
+from utils import get_current_token, decode_user_id
 
 router = APIRouter(prefix="/api/analytics", tags=["数据分析"])
-SECRET_KEY = "smart-park-secret-key-2026-32bytes!x"
-ALGORITHM = "HS256"
 
 
-def check_admin(token: str = None, db: Session = None):
-    try:
-        payload = jwt.decode(token or "", SECRET_KEY, algorithms=[ALGORITHM])
-        user = db.query(User).filter(User.id == payload["user_id"]).first() if db else None
+def check_admin(token: str = "", db: Session = None):
+    user_id = decode_user_id(token)
+    if user_id and db:
+        user = db.query(User).filter(User.id == user_id).first()
         if user and user.role == "admin":
             return user
-    except:
-        pass
     return None
 
 
 @router.get("/turnover")
-def turnover_rate(token: str = None, db: Session = Depends(get_db)):
+def turnover_rate(token: str = Depends(get_current_token), db: Session = Depends(get_db)):
     admin = check_admin(token, db)
     if not admin:
         return {"code": 403, "msg": "需要管理员权限"}
@@ -37,7 +34,7 @@ def turnover_rate(token: str = None, db: Session = Depends(get_db)):
 
 
 @router.get("/revenue-trend")
-def revenue_trend(days: int = 7, token: str = None, db: Session = Depends(get_db)):
+def revenue_trend(days: int = 7, token: str = Depends(get_current_token), db: Session = Depends(get_db)):
     admin = check_admin(token, db)
     if not admin:
         return {"code": 403, "msg": "需要管理员权限"}
@@ -55,7 +52,7 @@ def revenue_trend(days: int = 7, token: str = None, db: Session = Depends(get_db
 
 
 @router.get("/saturation")
-def saturation(token: str = None, db: Session = Depends(get_db)):
+def saturation(token: str = Depends(get_current_token), db: Session = Depends(get_db)):
     admin = check_admin(token, db)
     if not admin:
         return {"code": 403, "msg": "需要管理员权限"}
@@ -68,7 +65,7 @@ def saturation(token: str = None, db: Session = Depends(get_db)):
 
 
 @router.get("/user-growth")
-def user_growth(days: int = 7, token: str = None, db: Session = Depends(get_db)):
+def user_growth(days: int = 7, token: str = Depends(get_current_token), db: Session = Depends(get_db)):
     admin = check_admin(token, db)
     if not admin:
         return {"code": 403, "msg": "需要管理员权限"}
@@ -81,7 +78,7 @@ def user_growth(days: int = 7, token: str = None, db: Session = Depends(get_db))
 
 
 @router.get("/conversion")
-def conversion_rate(token: str = None, db: Session = Depends(get_db)):
+def conversion_rate(token: str = Depends(get_current_token), db: Session = Depends(get_db)):
     admin = check_admin(token, db)
     if not admin:
         return {"code": 403, "msg": "需要管理员权限"}

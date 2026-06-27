@@ -2,29 +2,26 @@
 from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
 from sqlalchemy import func, extract
-import jwt, datetime
+import datetime
 
 from database import get_db
 from models import User, ParkingLot, ParkingSpot, Order, Reservation, SpotStatus, OrderStatus
+from utils import get_current_token, decode_user_id
 
 router = APIRouter(prefix="/api/admin", tags=["管理后台"])
-SECRET_KEY = "smart-park-secret-key-2026-32bytes!x"
-ALGORITHM = "HS256"
 
 
-def check_admin(token: str = None, db: Session = None):
-    try:
-        payload = jwt.decode(token or "", SECRET_KEY, algorithms=[ALGORITHM])
-        user = db.query(User).filter(User.id == payload["user_id"]).first() if db else None
+def check_admin(token: str = "", db: Session = None):
+    user_id = decode_user_id(token)
+    if user_id and db:
+        user = db.query(User).filter(User.id == user_id).first()
         if user and user.role == "admin":
             return user
-    except:
-        pass
     return None
 
 
 @router.get("/dashboard")
-def dashboard(token: str = None, db: Session = Depends(get_db)):
+def dashboard(token: str = Depends(get_current_token), db: Session = Depends(get_db)):
     admin = check_admin(token, db)
     if not admin:
         return {"code": 403, "msg": "需要管理员权限"}
@@ -58,7 +55,7 @@ def dashboard(token: str = None, db: Session = Depends(get_db)):
 
 
 @router.get("/lots")
-def admin_lots(page: int = 1, page_size: int = 20, token: str = None, db: Session = Depends(get_db)):
+def admin_lots(page: int = 1, page_size: int = 20, token: str = Depends(get_current_token), db: Session = Depends(get_db)):
     admin = check_admin(token, db)
     if not admin:
         return {"code": 403, "msg": "需要管理员权限"}
@@ -77,7 +74,7 @@ def admin_lots(page: int = 1, page_size: int = 20, token: str = None, db: Sessio
 
 
 @router.get("/lots/{lot_id}/overview")
-def lot_overview(lot_id: int, token: str = None, db: Session = Depends(get_db)):
+def lot_overview(lot_id: int, token: str = Depends(get_current_token), db: Session = Depends(get_db)):
     admin = check_admin(token, db)
     if not admin:
         return {"code": 403, "msg": "需要管理员权限"}
@@ -100,7 +97,7 @@ def lot_overview(lot_id: int, token: str = None, db: Session = Depends(get_db)):
 
 
 @router.get("/lots/{lot_id}/flow")
-def lot_flow(lot_id: int, token: str = None, db: Session = Depends(get_db)):
+def lot_flow(lot_id: int, token: str = Depends(get_current_token), db: Session = Depends(get_db)):
     admin = check_admin(token, db)
     if not admin:
         return {"code": 403, "msg": "需要管理员权限"}
@@ -113,7 +110,7 @@ def lot_flow(lot_id: int, token: str = None, db: Session = Depends(get_db)):
 
 
 @router.get("/lots/{lot_id}/revenue")
-def lot_revenue(lot_id: int, period: str = "daily", token: str = None, db: Session = Depends(get_db)):
+def lot_revenue(lot_id: int, period: str = "daily", token: str = Depends(get_current_token), db: Session = Depends(get_db)):
     admin = check_admin(token, db)
     if not admin:
         return {"code": 403, "msg": "需要管理员权限"}
@@ -133,7 +130,7 @@ def lot_revenue(lot_id: int, period: str = "daily", token: str = None, db: Sessi
 
 
 @router.get("/orders")
-def admin_orders(page: int = 1, page_size: int = 20, status: str = None, token: str = None, db: Session = Depends(get_db)):
+def admin_orders(page: int = 1, page_size: int = 20, status: str = None, token: str = Depends(get_current_token), db: Session = Depends(get_db)):
     admin = check_admin(token, db)
     if not admin:
         return {"code": 403, "msg": "需要管理员权限"}
@@ -155,7 +152,7 @@ def admin_orders(page: int = 1, page_size: int = 20, status: str = None, token: 
 
 
 @router.put("/spots/{spot_id}/release")
-def release_spot(spot_id: int, token: str = None, db: Session = Depends(get_db)):
+def release_spot(spot_id: int, token: str = Depends(get_current_token), db: Session = Depends(get_db)):
     admin = check_admin(token, db)
     if not admin:
         return {"code": 403, "msg": "需要管理员权限"}
@@ -171,7 +168,7 @@ def release_spot(spot_id: int, token: str = None, db: Session = Depends(get_db))
 
 
 @router.get("/reports")
-def export_reports(token: str = None, db: Session = Depends(get_db)):
+def export_reports(token: str = Depends(get_current_token), db: Session = Depends(get_db)):
     admin = check_admin(token, db)
     if not admin:
         return {"code": 403, "msg": "需要管理员权限"}

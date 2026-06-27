@@ -1,26 +1,21 @@
 """预约模块 API (M5)"""
 from fastapi import APIRouter, Depends, Query
 from sqlalchemy.orm import Session
-import jwt, datetime
+import datetime
 
 from database import get_db
 from models import User, ParkingLot, ParkingSpot, Reservation, SpotStatus, ReservationStatus
+from utils import get_current_token, decode_user_id
 
 router = APIRouter(prefix="/api/reservations", tags=["预约"])
-SECRET_KEY = "smart-park-secret-key-2026-32bytes!x"
-ALGORITHM = "HS256"
 
 
-def get_user_id(token: str = None) -> int:
-    try:
-        payload = jwt.decode(token or "", SECRET_KEY, algorithms=[ALGORITHM])
-        return payload["user_id"]
-    except:
-        return 0
+def get_user_id(token: str = "") -> int:
+    return decode_user_id(token)
 
 
 @router.post("")
-def create_reservation(req: dict, token: str = None, db: Session = Depends(get_db)):
+def create_reservation(req: dict, token: str = Depends(get_current_token), db: Session = Depends(get_db)):
     user_id = get_user_id(token)
     if not user_id:
         return {"code": 401, "msg": "请先登录"}
@@ -64,7 +59,7 @@ def create_reservation(req: dict, token: str = None, db: Session = Depends(get_d
 
 
 @router.get("/my")
-def my_reservations(token: str = None, db: Session = Depends(get_db)):
+def my_reservations(token: str = Depends(get_current_token), db: Session = Depends(get_db)):
     user_id = get_user_id(token)
     if not user_id:
         return {"code": 401, "msg": "请先登录"}
@@ -84,7 +79,7 @@ def my_reservations(token: str = None, db: Session = Depends(get_db)):
 
 
 @router.get("/{reservation_id}")
-def reservation_detail(reservation_id: int, token: str = None, db: Session = Depends(get_db)):
+def reservation_detail(reservation_id: int, token: str = Depends(get_current_token), db: Session = Depends(get_db)):
     r = db.query(Reservation).filter(Reservation.id == reservation_id).first()
     if not r:
         return {"code": 404, "msg": "预约不存在"}
@@ -99,7 +94,7 @@ def reservation_detail(reservation_id: int, token: str = None, db: Session = Dep
 
 
 @router.put("/{reservation_id}/confirm")
-def confirm_reservation(reservation_id: int, token: str = None, db: Session = Depends(get_db)):
+def confirm_reservation(reservation_id: int, token: str = Depends(get_current_token), db: Session = Depends(get_db)):
     r = db.query(Reservation).filter(Reservation.id == reservation_id).first()
     if not r:
         return {"code": 404, "msg": "预约不存在"}
@@ -124,7 +119,7 @@ def confirm_reservation(reservation_id: int, token: str = None, db: Session = De
 
 
 @router.put("/{reservation_id}/cancel")
-def cancel_reservation(reservation_id: int, token: str = None, db: Session = Depends(get_db)):
+def cancel_reservation(reservation_id: int, token: str = Depends(get_current_token), db: Session = Depends(get_db)):
     r = db.query(Reservation).filter(Reservation.id == reservation_id).first()
     if not r:
         return {"code": 404, "msg": "预约不存在"}
