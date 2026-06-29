@@ -130,13 +130,15 @@ def lot_revenue(lot_id: int, period: str = "daily", token: str = Depends(get_cur
 
 
 @router.get("/orders")
-def admin_orders(page: int = 1, page_size: int = 20, status: str = None, token: str = Depends(get_current_token), db: Session = Depends(get_db)):
+def admin_orders(page: int = 1, page_size: int = 20, status: str = None, keyword: str = None, token: str = Depends(get_current_token), db: Session = Depends(get_db)):
     admin = check_admin(token, db)
     if not admin:
         return {"code": 403, "msg": "需要管理员权限"}
     q = db.query(Order)
     if status:
         q = q.filter(Order.status == status)
+    if keyword:
+        q = q.filter(Order.plate_number.like(f'%{keyword}%'))
     total = q.count()
     orders = q.order_by(Order.entry_time.desc()).offset((page - 1) * page_size).limit(page_size).all()
     result = []

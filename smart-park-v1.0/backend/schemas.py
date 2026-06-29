@@ -9,6 +9,7 @@ class UserRegister(BaseModel):
     username: str = Field(min_length=2, max_length=20)
     password: str = Field(min_length=6, max_length=18)
     phone: Optional[str] = Field(None, pattern=r"^\d{11}$")
+    plate_number: Optional[str] = None
 
 
 class UserLogin(BaseModel):

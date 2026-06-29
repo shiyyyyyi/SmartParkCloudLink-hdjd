@@ -38,6 +38,7 @@ def register(req: UserRegister, db: Session = Depends(get_db)):
         username=req.username,
         password_hash=pwd_context.hash(req.password),
         phone=req.phone,
+        plate_numbers=req.plate_number,
         role=UserRole.USER.value,
         created_at=datetime.datetime.utcnow()
     )

@@ -508,6 +508,154 @@ def make_diagram(name, title, boxes, arrows=None, size=(1300, 760)):
     return out
 
 
+# ====== UI Mockup helpers ======
+
+class _UI:
+    pass
+
+def UI_BAR(kind, text):
+    return ("bar", kind, text)
+
+def UI_SECTION(text):
+    return ("section", text)
+
+def UI_CARD(title, subtitle, color="blue"):
+    return ("card", title, subtitle, color)
+
+def UI_INFO(text):
+    return ("info", text)
+
+def UI_BUTTON(text, color="blue"):
+    return ("button", text, color)
+
+def UI_GRID(cols, rows, states):
+    return ("grid", cols, rows, states)
+
+def UI_STATS_ROW(items):
+    return ("stats", items)
+
+
+def make_ui_mockup(name, title, page_title, elements, size=(420, 760)):
+    """Draw a mobile-style UI mockup."""
+    DIAGRAM_DIR.mkdir(exist_ok=True)
+    img = Image.new("RGB", size, (245, 245, 248))
+    draw = ImageDraw.Draw(img)
+    title_font = load_font(24, bold=True)
+    body_font = load_font(16)
+    small_font = load_font(13)
+    tiny_font = load_font(11)
+    
+    # Status bar
+    draw.rectangle((0, 0, size[0], 28), fill=(50, 50, 55))
+    draw.text((15, 5), "9:41", fill=(255, 255, 255), font=small_font)
+    draw.text((size[0] - 80, 5), "100% ▮▮▮▮", fill=(255, 255, 255), font=tiny_font)
+    
+    # Header bar
+    draw.rectangle((0, 28, size[0], 72), fill=(24, 144, 255))
+    draw.text((20, 38), page_title, fill=(255, 255, 255), font=title_font)
+    
+    y = 84
+    for elem in elements:
+        kind = elem[0]
+        if kind == "bar":
+            _, bar_type, text = elem
+            if bar_type == "search":
+                draw.rectangle((12, y, size[0] - 12, y + 38), fill=(255, 255, 255), outline=(200, 200, 210))
+                draw.text((22, y + 10), text, fill=(160, 160, 170), font=small_font)
+                y += 52
+            elif bar_type == "back":
+                draw.text((20, y + 2), "← " + text, fill=(255, 255, 255), font=body_font)
+                y += 6
+            elif bar_type == "input":
+                draw.rectangle((12, y, size[0] - 12, y + 38), fill=(255, 255, 255), outline=(200, 200, 210))
+                draw.text((22, y + 10), text, fill=(100, 100, 110), font=small_font)
+                y += 52
+            elif bar_type == "dashboard":
+                draw.text((15, y + 2), text, fill=(255, 255, 255), font=body_font)
+                y += 6
+        elif kind == "section":
+            _, text = elem
+            draw.rectangle((0, y, size[0], y + 32), fill=(235, 237, 240))
+            draw.text((16, y + 8), text, fill=(100, 100, 110), font=small_font)
+            y += 40
+        elif kind == "card":
+            _, title, subtitle, color = elem
+            colors = {"green": (0, 150, 80), "orange": (230, 140, 20), "red": (220, 50, 50), "blue": (24, 144, 255), "gray": (120, 120, 130)}
+            c = colors.get(color, (24, 144, 255))
+            draw.rectangle((12, y, size[0] - 12, y + 64), fill=(255, 255, 255), outline=(220, 220, 225))
+            draw.rectangle((12, y, 18, y + 64), fill=c)
+            draw.text((28, y + 8), title, fill=(30, 30, 30), font=body_font)
+            draw.text((28, y + 32), subtitle, fill=(120, 120, 130), font=small_font)
+            y += 74
+        elif kind == "info":
+            _, text = elem
+            draw.text((16, y + 4), text, fill=(80, 80, 90), font=small_font)
+            y += 26
+        elif kind == "button":
+            _, text, color = elem
+            colors = {"green": (52, 199, 89), "orange": (255, 149, 0), "red": (255, 59, 48), "blue": (0, 122, 255), "gray": (142, 142, 147)}
+            c = colors.get(color, (0, 122, 255))
+            draw.rounded_rectangle((20, y, size[0] - 20, y + 42), radius=10, fill=c)
+            tw = draw.textlength(text, font=body_font) if hasattr(draw, 'textlength') else len(text) * 16
+            draw.text(((size[0] - tw) // 2, y + 10), text, fill=(255, 255, 255), font=body_font)
+            y += 54
+        elif kind == "grid":
+            _, cols, rows, states = elem
+            grid_y = y
+            cell_w = (size[0] - 40) // cols
+            cell_h = 50
+            for r in range(rows):
+                for c in range(cols):
+                    cx = 20 + c * cell_w
+                    cy = grid_y + r * cell_h
+                    idx = r * cols + c
+                    if idx < len(states):
+                        st = states[idx]
+                        if st == 0:
+                            fill_c = (200, 240, 210)  # free green
+                            label = "空闲"
+                        elif st == 1:
+                            fill_c = (255, 230, 180)  # locked orange
+                            label = "锁定"
+                        elif st == 2:
+                            fill_c = (255, 200, 200)  # occupied red
+                            label = "占用"
+                        else:
+                            fill_c = (220, 220, 220)
+                            label = ""
+                        draw.rectangle((cx + 2, cy + 2, cx + cell_w - 4, cy + cell_h - 4), fill=fill_c, outline=(180, 180, 185))
+                        draw.text((cx + cell_w // 2 - 12, cy + cell_h // 2 - 10), label, fill=(80, 80, 80), font=tiny_font)
+            y += rows * cell_h + 12
+        elif kind == "stats":
+            _, items = elem
+            n = len(items)
+            box_w = (size[0] - 30) // n
+            for i, item in enumerate(items):
+                sx = 12 + i * box_w
+                draw.rectangle((sx, y, sx + box_w - 6, y + 56), fill=(255, 255, 255), outline=(225, 225, 230))
+                draw.text((sx + box_w // 2 - 30, y + 8), item, fill=(30, 30, 30), font=tiny_font)
+            y += 68
+    
+    # Bottom tab bar for owner pages
+    if "车主端" in title:
+        draw.rectangle((0, size[1] - 48, size[0], size[1]), fill=(248, 248, 250))
+        draw.line((0, size[1] - 48, size[0], size[1] - 48), fill=(210, 210, 215), width=1)
+        tabs = ["首页", "预约", "订单", "我的"]
+        tab_w = size[0] // 4
+        for i, tab in enumerate(tabs):
+            tx = i * tab_w + tab_w // 2 - 12
+            draw.text((tx, size[1] - 36), tab, fill=(100, 100, 110), font=small_font)
+    
+    # Title at bottom
+    title2_font = load_font(20)
+    tw = draw.textlength(title, font=title2_font) if hasattr(draw, 'textlength') else len(title) * 20
+    draw.text(((size[0] - tw) // 2, size[1] - 22), title, fill=(60, 60, 70), font=title2_font)
+    
+    out = DIAGRAM_DIR / f"{name}.png"
+    img.save(out)
+    return out
+
+
 def create_diagrams():
     diagrams = {}
     diagrams["context"] = make_diagram(
@@ -585,6 +733,193 @@ def create_diagrams():
             (490, 185, 540, 185, "reserve"),
             (760, 185, 1080, 185, "update spot"),
             (1030, 185, 1080, 185, "order"),
+        ],
+    )
+    # ====== 界面设计图 (UI mockups) ======
+    diagrams["ui_owner_search"] = make_ui_mockup(
+        "ui_owner_01_search",
+        "车主端-首页/搜索",
+        "SmartPark",
+        [
+            UI_BAR("search", "搜索目的地、车场名称..."),
+            UI_SECTION("附近车场"),
+            UI_CARD("万达广场停车场", "空位: 32/200   ¥6/h   1.2km", "green"),
+            UI_CARD("市中心医院停车场", "空位: 5/120   ¥4/h   0.8km", "orange"),
+            UI_CARD("火车站P1停车场", "空位: 89/300   ¥3/h   2.5km", "green"),
+            UI_CARD("商业街地下停车场", "空位: 0/80   ¥8/h   0.3km", "red"),
+        ],
+    )
+    diagrams["ui_owner_detail"] = make_ui_mockup(
+        "ui_owner_02_detail",
+        "车主端-车场详情",
+        "车场详情",
+        [
+            UI_BAR("back", "万达广场停车场"),
+            UI_INFO("地址: 中山路100号  |  总车位: 200  |  当前空位: 32"),
+            UI_INFO("收费: ¥6/h  |  免费15分钟  |  24h营业"),
+            UI_SECTION("车位选择"),
+            UI_GRID(4, 5, [0,0,1,0,2, 0,1,0,2,1, 1,1,0,1,0, 2,0,1,0,1]),
+            UI_BUTTON("立即预约", "blue"),
+        ],
+    )
+    diagrams["ui_owner_reserve"] = make_ui_mockup(
+        "ui_owner_03_reserve",
+        "车主端-预约确认",
+        "预约确认",
+        [
+            UI_BAR("back", "预约确认"),
+            UI_INFO("车场: 万达广场停车场"),
+            UI_INFO("车位: B1-023  |  收费: ¥6/h"),
+            UI_CARD("预约倒计时", "14:32 (剩余)", "orange"),
+            UI_INFO("请在15分钟内到达车场确认预约"),
+            UI_BUTTON("到场确认", "green"),
+            UI_BUTTON("取消预约", "gray"),
+        ],
+    )
+    diagrams["ui_owner_pay"] = make_ui_mockup(
+        "ui_owner_04_pay",
+        "车主端-出场支付",
+        "出场支付",
+        [
+            UI_BAR("back", "支付"),
+            UI_INFO("订单号: ORD202606050001"),
+            UI_INFO("车场: 万达广场停车场  |  车位: B1-023"),
+            UI_INFO("入场: 2026-06-05 14:00  |  出场: 2026-06-05 16:30"),
+            UI_CARD("停车费用", "¥15.00 (2.5h x ¥6/h)", "blue"),
+            UI_INFO("优惠券: -¥5.00  |  实付: ¥10.00"),
+            UI_BUTTON("模拟支付", "green"),
+        ],
+    )
+    diagrams["ui_owner_findcar"] = make_ui_mockup(
+        "ui_owner_05_findcar",
+        "车主端-反向寻车",
+        "反向寻车",
+        [
+            UI_BAR("back", "反向寻车"),
+            UI_BAR("input", "输入车牌号搜索"),
+            UI_INFO("车辆: 粤B·12345  |  车场: 万达广场"),
+            UI_INFO("楼层: B1  |  区域: C区  |  车位号: B1-023"),
+            UI_CARD("寻车路线", "入口 → 电梯下行B1 → 左转C区 → 直行50m → B1-023", "blue"),
+            UI_BUTTON("查看地图指引", "blue"),
+        ],
+    )
+    # 管理端
+    diagrams["ui_admin_overview"] = make_ui_mockup(
+        "ui_admin_01_overview",
+        "管理端-运营概览",
+        "运营概览",
+        [
+            UI_BAR("dashboard", "智慧停车运营管理平台"),
+            UI_SECTION("今日概览"),
+            UI_STATS_ROW(["总车位: 800", "占用: 612", "利用率: 76.5%", "今日收入: ¥3,240"]),
+            UI_SECTION("实时告警"),
+            UI_CARD("⚠ 设备离线", "火车站P1-3号摄像头  14:22", "orange"),
+            UI_CARD("⚠ 异常订单", "ORD06050187 缺少入场时间", "red"),
+            UI_SECTION("快速入口"),
+            UI_BUTTON("车场管理", "blue"),
+            UI_BUTTON("订单管理", "blue"),
+            UI_BUTTON("设备运维", "blue"),
+        ],
+    )
+    diagrams["ui_admin_access"] = make_ui_mockup(
+        "ui_admin_02_access",
+        "管理端-数据接入",
+        "停车场数据接入",
+        [
+            UI_BAR("dashboard", "数据接入管理"),
+            UI_SECTION("接入车场列表"),
+            UI_CARD("万达广场停车场", "状态: 在线  |  同步: 2026-06-05 16:30  |  空位: 32", "green"),
+            UI_CARD("火车站P1停车场", "状态: 在线  |  同步: 2026-06-05 16:28  |  空位: 89", "green"),
+            UI_CARD("商业街地下停车场", "状态: 离线  |  上次同步: 2026-06-05 14:00", "red"),
+            UI_BUTTON("+ 新增车场接入", "blue"),
+        ],
+    )
+    diagrams["ui_admin_guide"] = make_ui_mockup(
+        "ui_admin_03_guide",
+        "管理端-诱导发布",
+        "停车诱导信息发布",
+        [
+            UI_BAR("dashboard", "诱导发布管理"),
+            UI_SECTION("诱导屏列表"),
+            UI_CARD("中山路-北段诱导屏", "内容: 万达广场空位32个  |  状态: 已发布", "green"),
+            UI_CARD("解放路-东段诱导屏", "内容: 火车站P1空位89个  |  状态: 已发布", "green"),
+            UI_CARD("人民路-南段诱导屏", "内容: 待生成  |  状态: 未发布", "gray"),
+            UI_BUTTON("生成诱导内容", "blue"),
+            UI_BUTTON("批量发布", "green"),
+        ],
+    )
+    diagrams["ui_admin_pricing"] = make_ui_mockup(
+        "ui_admin_04_pricing",
+        "管理端-动态定价",
+        "动态定价策略",
+        [
+            UI_BAR("dashboard", "定价策略管理"),
+            UI_SECTION("定价规则"),
+            UI_CARD("高峰时段加价", "时段: 17:00-20:00  |  系数: 1.5x  |  状态: 启用", "green"),
+            UI_CARD("节假日浮动", "适用: 周末/法定假日  |  系数: 1.2x  |  状态: 启用", "green"),
+            UI_CARD("夜间优惠", "时段: 22:00-08:00  |  系数: 0.5x  |  状态: 启用", "blue"),
+            UI_BUTTON("+ 新增规则", "blue"),
+            UI_BUTTON("价格预览", "gray"),
+        ],
+    )
+    diagrams["ui_admin_device"] = make_ui_mockup(
+        "ui_admin_05_device",
+        "管理端-设备运维",
+        "设备运维管理",
+        [
+            UI_BAR("dashboard", "设备运维"),
+            UI_SECTION("设备状态"),
+            UI_STATS_ROW(["总数: 48", "在线: 42", "离线: 3", "故障: 3"]),
+            UI_CARD("3号摄像头", "位置: 万达B1-C区  |  状态: 离线  |  最后心跳: 14:20", "red"),
+            UI_CARD("1号道闸", "位置: 万达入口  |  状态: 故障  |  故障: 电机异常", "red"),
+            UI_CARD("2号诱导屏", "位置: 中山路北段  |  状态: 在线", "green"),
+            UI_BUTTON("处理告警", "orange"),
+        ],
+    )
+    # 监管端
+    diagrams["ui_reg_dashboard"] = make_ui_mockup(
+        "ui_reg_01_dashboard",
+        "监管端-监管大屏",
+        "城市停车监管大屏",
+        [
+            UI_BAR("dashboard", "城市停车监管平台"),
+            UI_STATS_ROW(["接入车场: 156", "总车位: 45,200", "当前占用率: 73.8%", "违停待审核: 23"]),
+            UI_SECTION("区域停车态势"),
+            UI_CARD("中心城区", "占用率: 82.5%  |  车场: 48  |  空位: 1,230", "orange"),
+            UI_CARD("城东新区", "占用率: 55.2%  |  车场: 32  |  空位: 3,450", "green"),
+            UI_CARD("火车站片区", "占用率: 91.3%  |  车场: 18  |  空位: 420", "red"),
+            UI_SECTION("违停趋势"),
+            UI_INFO("本周违停: 156  |  环比: +12%  |  已处理: 133  |  处理率: 85.3%"),
+        ],
+    )
+    diagrams["ui_reg_violation"] = make_ui_mockup(
+        "ui_reg_02_violation",
+        "监管端-违停审核",
+        "违停审核管理",
+        [
+            UI_BAR("dashboard", "违停审核"),
+            UI_SECTION("待审核记录"),
+            UI_CARD("粤B·A5678", "位置: 中山路禁停区  |  时间: 2026-06-05 15:20  |  状态: 待审核", "orange"),
+            UI_CARD("粤B·C9012", "位置: 人民路消防通道  |  时间: 2026-06-05 14:50  |  状态: 待审核", "orange"),
+            UI_CARD("粤B·D3456", "位置: 解放路公交站  |  时间: 2026-06-05 14:10  |  状态: 已确认", "red"),
+            UI_BUTTON("查看证据图片", "blue"),
+            UI_BUTTON("确认违停", "red"),
+            UI_BUTTON("驳回", "gray"),
+        ],
+    )
+    diagrams["ui_reg_policy"] = make_ui_mockup(
+        "ui_reg_03_policy",
+        "监管端-政策评估",
+        "停车政策效果评估",
+        [
+            UI_BAR("dashboard", "政策评估"),
+            UI_SECTION("价格政策效果"),
+            UI_CARD("中心城区高峰加价", "实施: 2026-05  |  占用率变化: -8.2%  |  周转率: +15.3%", "green"),
+            UI_CARD("夜间停车优惠", "实施: 2026-04  |  夜间占用率: +22.5%  |  投诉: -5.1%", "green"),
+            UI_SECTION("违停趋势分析"),
+            UI_STATS_ROW(["本月违停: 623", "环比: +8.5%", "处罚率: 72.3%", "投诉率: 3.2%"]),
+            UI_SECTION("投诉统计"),
+            UI_INFO("停车费过高: 45件  |  车位不足: 32件  |  诱导信息不准: 18件"),
         ],
     )
     diagrams["er"] = make_diagram(
@@ -867,7 +1202,9 @@ def add_body(doc):
     add_para(doc, "基础数据包括示例停车场、车位、车辆、管理员账号、设备、诱导屏、价格规则、营销活动和历史订单。初始化脚本应保证车主端、运营端和监管端都有可演示数据。")
 
     add_heading(doc, "4 界面设计", 1)
+    add_para(doc, "本节展示系统的核心界面设计，包含车主端、管理端和监管端三大类界面。每个界面均配有说明表格和界面模拟图。")
     add_heading(doc, "4.1 车主端核心界面", 2)
+    add_para(doc, "车主端采用移动端优先的卡片式布局，底部导航栏包含首页、预约、订单、我的四个入口。")
     add_table(
         doc,
         ["界面", "核心元素", "交互说明"],
@@ -879,7 +1216,13 @@ def add_body(doc):
             ("反向寻车", "车牌输入、楼层区域、路线文本", "按进行中订单生成寻车指引"),
         ],
     )
+    add_figure(doc, diagrams["ui_owner_search"], "图4-1 车主端-首页/搜索")
+    add_figure(doc, diagrams["ui_owner_detail"], "图4-2 车主端-车场详情")
+    add_figure(doc, diagrams["ui_owner_reserve"], "图4-3 车主端-预约确认")
+    add_figure(doc, diagrams["ui_owner_pay"], "图4-4 车主端-出场支付")
+    add_figure(doc, diagrams["ui_owner_findcar"], "图4-5 车主端-反向寻车")
     add_heading(doc, "4.2 管理端核心界面", 2)
+    add_para(doc, "管理端采用桌面端布局，左侧菜单导航，右侧内容区域展示数据表格、统计卡片和操作入口。")
     add_table(
         doc,
         ["界面", "核心元素", "交互说明"],
@@ -891,7 +1234,13 @@ def add_body(doc):
             ("设备运维", "设备列表、故障等级、处理记录", "处理摄像头、道闸、诱导屏和充电桩状态"),
         ],
     )
+    add_figure(doc, diagrams["ui_admin_overview"], "图4-6 管理端-运营概览")
+    add_figure(doc, diagrams["ui_admin_access"], "图4-7 管理端-数据接入")
+    add_figure(doc, diagrams["ui_admin_guide"], "图4-8 管理端-诱导发布")
+    add_figure(doc, diagrams["ui_admin_pricing"], "图4-9 管理端-动态定价")
+    add_figure(doc, diagrams["ui_admin_device"], "图4-10 管理端-设备运维")
     add_heading(doc, "4.3 监管端核心界面", 2)
+    add_para(doc, "监管端以大屏展示和数据汇总为主，支持区域态势、违停审核和政策评估功能。")
     add_table(
         doc,
         ["界面", "核心元素", "交互说明"],
@@ -901,6 +1250,9 @@ def add_body(doc):
             ("政策评估", "价格、饱和度、投诉/违停趋势", "辅助评估停车政策效果"),
         ],
     )
+    add_figure(doc, diagrams["ui_reg_dashboard"], "图4-11 监管端-监管大屏")
+    add_figure(doc, diagrams["ui_reg_violation"], "图4-12 监管端-违停审核")
+    add_figure(doc, diagrams["ui_reg_policy"], "图4-13 监管端-政策评估")
 
     add_heading(doc, "5 出错处理设计", 1)
     add_heading(doc, "5.1 出错处理目标", 2)

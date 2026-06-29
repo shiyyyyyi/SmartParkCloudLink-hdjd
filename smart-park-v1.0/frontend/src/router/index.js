@@ -9,12 +9,20 @@ const routes = [
   { path: '/reservations', name: 'Reservations', component: () => import('../views/MyReservations.vue'), meta: { requiresAuth: true } },
   { path: '/orders', name: 'Orders', component: () => import('../views/MyOrders.vue'), meta: { requiresAuth: true } },
   { path: '/records', name: 'Records', component: () => import('../views/ParkingRecords.vue'), meta: { requiresAuth: true } },
+  { path: '/find-car', name: 'FindCar', component: () => import('../views/FindCar.vue'), meta: { requiresAuth: true } },
   { path: '/mine', name: 'Mine', component: () => import('../views/Mine.vue'), meta: { requiresAuth: true } },
-  // Admin
-  { path: '/admin', name: 'AdminDashboard', component: () => import('../views/admin/Dashboard.vue'), meta: { requiresAuth: true, admin: true } },
-  { path: '/admin/lots', name: 'AdminLots', component: () => import('../views/admin/LotManagement.vue'), meta: { requiresAuth: true, admin: true } },
-  { path: '/admin/lots/:id', name: 'AdminLotOverview', component: () => import('../views/admin/LotOverview.vue'), meta: { requiresAuth: true, admin: true } },
-  { path: '/admin/orders', name: 'AdminOrders', component: () => import('../views/admin/OrderManagement.vue'), meta: { requiresAuth: true, admin: true } },
+  // Admin - 独立管理后台布局
+  {
+    path: '/admin',
+    component: () => import('../views/admin/AdminLayout.vue'),
+    meta: { requiresAuth: true, admin: true },
+    children: [
+      { path: '', name: 'AdminDashboard', component: () => import('../views/admin/Dashboard.vue') },
+      { path: 'lots', name: 'AdminLots', component: () => import('../views/admin/LotManagement.vue') },
+      { path: 'lots/:id', name: 'AdminLotOverview', component: () => import('../views/admin/LotOverview.vue') },
+      { path: 'orders', name: 'AdminOrders', component: () => import('../views/admin/OrderManagement.vue') },
+    ]
+  },
 ]
 
 const router = createRouter({ history: createWebHistory(), routes })

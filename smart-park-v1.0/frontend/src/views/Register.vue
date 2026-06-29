@@ -5,6 +5,7 @@
       <el-input v-model="username" placeholder="用户名(2-20位)" size="large" clearable class="mb16" />
       <el-input v-model="password" type="password" placeholder="密码(6-18位)" size="large" show-password class="mb16" />
       <el-input v-model="phone" placeholder="手机号(选填)" size="large" clearable class="mb16" />
+      <el-input v-model="plateNumber" placeholder="车牌号(选填，如：京A12345)" size="large" clearable class="mb16" />
       <el-button type="primary" size="large" :loading="loading" @click="register" style="width:100%">注 册</el-button>
       <p class="auth-link" @click="$router.push('/login')">已有账号？去登录</p>
     </div>
@@ -23,13 +24,19 @@ const auth = useAuthStore()
 const username = ref('')
 const password = ref('')
 const phone = ref('')
+const plateNumber = ref('')
 const loading = ref(false)
 
 async function register() {
   if (!username.value || username.value.length < 2) return ElMessage.warning('用户名至少2位')
   if (!password.value || password.value.length < 6) return ElMessage.warning('密码至少6位')
   loading.value = true
-  const res = await api.post('/auth/register', { username: username.value, password: password.value, phone: phone.value || null })
+  const res = await api.post('/auth/register', {
+    username: username.value,
+    password: password.value,
+    phone: phone.value || null,
+    plate_number: plateNumber.value || null
+  })
   if (res.code === 0) {
     auth.setAuth(res.data.token, res.data.user)
     ElMessage.success('注册成功')

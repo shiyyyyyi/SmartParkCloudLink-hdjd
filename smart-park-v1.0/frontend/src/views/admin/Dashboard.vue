@@ -12,6 +12,18 @@
         </el-col>
       </el-row>
 
+      <!-- 收入趋势图 -->
+      <el-card class="mt16">
+        <template #header>近7天收入趋势</template>
+        <div ref="revenueChart" style="height:220px"></div>
+      </el-card>
+
+      <!-- 饱和度分析 -->
+      <el-card class="mt16">
+        <template #header>停车场饱和度</template>
+        <div ref="saturationChart" style="height:280px"></div>
+      </el-card>
+
       <!-- 车场列表 -->
       <el-card class="mt16">
         <template #header>停车场运营</template>
@@ -37,18 +49,25 @@
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, nextTick } from 'vue'
 import api from '../../utils/api'
+import * as echarts from 'echarts'
 
 const stats = ref({})
 const lots = ref([])
 const loading = ref(false)
-
 const cards = ref([])
+const revenueChart = ref(null)
+const saturationChart = ref(null)
 
 async function fetch() {
   loading.value = true
-  const [dashRes, lotRes] = await Promise.all([api.get('/admin/dashboard'), api.get('/admin/lots', { params: { page: 1, page_size: 10 } })])
+  const [dashRes, lotRes, revenueRes, saturationRes] = await Promise.all([
+    api.get('/admin/dashboard'),
+    api.get('/admin/lots', { params: { page: 1, page_size: 10 } }),
+    api.get('/analytics/revenue-trend', { params: { days: 7 } }),
+    api.get('/analytics/saturation')
+  ])
   const d = dashRes.data
   stats.value = d
   lots.value = lotRes.data || []
@@ -59,6 +78,42 @@ async function fetch() {
     { title: '今日收入', value: `¥${d.today_revenue}`, color: '#F56C6C' },
   ]
   loading.value = false
+
+  await nextTick()
+  renderRevenueChart(revenueRes.data || [])
+  renderSaturationChart(saturationRes.data || [])
+}
+
+function renderRevenueChart(data) {
+  if (!revenueChart.value) return
+  const chart = echarts.init(revenueChart.value)
+  chart.setOption({
+    tooltip: { trigger: 'axis' },
+    grid: { left: 40, right: 20, top: 10, bottom: 30 },
+    xAxis: { type: 'category', data: data.map(d => d.date), axisLabel: { rotate: 30, fontSize: 11 } },
+    yAxis: { type: 'value', name: '收入(元)' },
+    series: [{ data: data.map(d => d.revenue), type: 'bar', itemStyle: { color: '#409EFF', borderRadius: [4, 4, 0, 0] } }]
+  })
+}
+
+function renderSaturationChart(data) {
+  if (!saturationChart.value) return
+  const chart = echarts.init(saturationChart.value)
+  const colors = { high: '#F56C6C', medium: '#E6A23C', low: '#67C23A' }
+  chart.setOption({
+    tooltip: { trigger: 'axis', axisPointer: { type: 'shadow' } },
+    grid: { left: 100, right: 60, top: 10, bottom: 20 },
+    yAxis: { type: 'category', data: data.map(d => d.lot_name), axisLabel: { fontSize: 11 } },
+    xAxis: { type: 'value', name: '饱和度(%)', max: 100 },
+    series: [{
+      data: data.map(d => ({
+        value: d.saturation,
+        itemStyle: { color: d.level === 'high' ? '#F56C6C' : d.level === 'medium' ? '#E6A23C' : '#67C23A' }
+      })),
+      type: 'bar',
+      label: { show: true, position: 'right', formatter: '{c}%' }
+    }]
+  })
 }
 
 onMounted(fetch)

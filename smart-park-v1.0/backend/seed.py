@@ -30,22 +30,22 @@ def seed():
         db.add(u)
     db.commit()
 
-    # 停车场
+    # 停车场 — 华东交通大学（南昌市青山湖区双港东大街808号）附近
     lots = [
-        ParkingLot(name="银泰城地下停车场", address="杭州市西湖区文三路500号", lat=30.2815, lng=120.1450,
-                   total_spots=200, available_spots=45, price_per_hour=6.0, admin_id=1, status="active",
+        ParkingLot(name="华东交通大学南区停车场", address="南昌市青山湖区双港东大街808号华东交大南区", lat=28.7443, lng=115.8604,
+                   total_spots=200, available_spots=45, price_per_hour=3.0, admin_id=1, status="active",
                    last_sync_at=datetime.datetime(2026, 6, 24, 14, 30)),
-        ParkingLot(name="西溪湿地P1停车场", address="杭州市西湖区天目山路518号", lat=30.2672, lng=120.0648,
-                   total_spots=350, available_spots=120, price_per_hour=4.0, admin_id=1, status="active",
+        ParkingLot(name="华东交通大学北区停车场", address="南昌市青山湖区双港东大街808号华东交大北区", lat=28.7498, lng=115.8580,
+                   total_spots=150, available_spots=52, price_per_hour=2.0, admin_id=1, status="active",
                    last_sync_at=datetime.datetime(2026, 6, 24, 14, 28)),
-        ParkingLot(name="杭州东站地下停车场", address="杭州市江干区天城路1号", lat=30.2911, lng=120.2104,
-                   total_spots=500, available_spots=89, price_per_hour=8.0, admin_id=1, status="active",
+        ParkingLot(name="双港地铁站停车场", address="南昌市青山湖区双港东大街地铁1号线双港站", lat=28.7405, lng=115.8642,
+                   total_spots=300, available_spots=89, price_per_hour=4.0, admin_id=1, status="active",
                    last_sync_at=datetime.datetime(2026, 6, 24, 14, 32)),
-        ParkingLot(name="滨江星光大道停车场", address="杭州市滨江区江南大道228号", lat=30.2085, lng=120.2123,
-                   total_spots=150, available_spots=12, price_per_hour=5.0, admin_id=1, status="active",
+        ParkingLot(name="江西财经大学蛟桥园停车场", address="南昌市青山湖区双港东大街169号江西财经大学", lat=28.7360, lng=115.8520,
+                   total_spots=180, available_spots=12, price_per_hour=3.0, admin_id=1, status="active",
                    last_sync_at=datetime.datetime(2026, 6, 24, 14, 25)),
-        ParkingLot(name="西湖银泰in77停车场", address="杭州市上城区延安路258号", lat=30.2410, lng=120.1654,
-                   total_spots=300, available_spots=67, price_per_hour=10.0, admin_id=1, status="active",
+        ParkingLot(name="经开区乐盈广场停车场", address="南昌市青山湖区双港西大街乐盈广场B1", lat=28.7418, lng=115.8456,
+                   total_spots=250, available_spots=67, price_per_hour=5.0, admin_id=1, status="active",
                    last_sync_at=datetime.datetime(2026, 6, 24, 14, 33)),
     ]
     for l in lots:
