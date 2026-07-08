@@ -28,7 +28,7 @@ def turnover_rate(token: str = Depends(get_current_token), db: Session = Depends
     lots = db.query(ParkingLot).all()
     result = []
     for lot in lots:
-        rate = round((lot.total_spots - lot.available_spots) / max(lot.total_spots, 1), 2)
+        rate = round((lot.total_spots - lot.available_spots) / max(lot.total_spots, 1) * 100, 1)
         result.append({"lot_id": lot.id, "lot_name": lot.name, "turnover_rate": rate})
     return {"code": 0, "data": result}
 
@@ -59,8 +59,9 @@ def saturation(token: str = Depends(get_current_token), db: Session = Depends(ge
     lots = db.query(ParkingLot).all()
     result = []
     for lot in lots:
-        sat = round(1 - lot.available_spots / max(lot.total_spots, 1), 2)
-        result.append({"lot_id": lot.id, "lot_name": lot.name, "saturation": sat, "level": "高" if sat > 0.7 else "中" if sat > 0.4 else "低"})
+        ratio = 1 - lot.available_spots / max(lot.total_spots, 1)
+        sat = round(ratio * 100, 1)
+        result.append({"lot_id": lot.id, "lot_name": lot.name, "saturation": sat, "level": "高" if ratio > 0.7 else "中" if ratio > 0.4 else "低"})
     return {"code": 0, "data": result}
 
 

@@ -69,6 +69,7 @@
 import { ref, onMounted } from 'vue'
 import { useRoute } from 'vue-router'
 import api from '../utils/api'
+import { firstPlateNumber } from '../utils/plates'
 import { Location, Position, CircleCheck, Clock, Remove } from '@element-plus/icons-vue'
 import { ElMessage } from 'element-plus'
 
@@ -90,7 +91,7 @@ async function fetchDetail() {
   try {
     const meRes = await api.get('/auth/me')
     if (meRes.code === 0 && meRes.data && meRes.data.plate_numbers) {
-      reservePlate.value = meRes.data.plate_numbers.split(',')[0].trim()
+      reservePlate.value = firstPlateNumber(meRes.data.plate_numbers)
     }
   } catch {}
   loading.value = false

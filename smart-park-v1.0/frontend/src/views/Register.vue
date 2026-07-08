@@ -2,6 +2,7 @@
   <div class="auth-page">
     <div class="auth-card">
       <h2 class="auth-title">注册账号</h2>
+      <p class="auth-subtitle">创建车主账号后可直接预约、入场和寻车</p>
       <el-input v-model="username" placeholder="用户名(2-20位)" size="large" clearable class="mb16" />
       <el-input v-model="password" type="password" placeholder="密码(6-18位)" size="large" show-password class="mb16" />
       <el-input v-model="phone" placeholder="手机号(选填)" size="large" clearable class="mb16" />
@@ -49,9 +50,10 @@ async function register() {
 </script>
 
 <style scoped>
-.auth-page { display: flex; align-items: center; justify-content: center; min-height: 100vh; background: linear-gradient(135deg, #67C23A, #409EFF); }
-.auth-card { width: 360px; background: #fff; border-radius: 16px; padding: 40px 32px; box-shadow: 0 8px 24px rgba(0,0,0,.15); }
-.auth-title { text-align: center; font-size: 28px; font-weight: 700; color: #67C23A; margin-bottom: 32px; }
+.auth-page { display: flex; align-items: center; justify-content: center; min-height: 100vh; padding: 24px; background: linear-gradient(135deg, #eef8f2 0%, #eaf4ff 58%, #fff 100%); }
+.auth-card { width: min(420px, 100%); background: rgba(255,255,255,.96); border: 1px solid #e8eef7; border-radius: 12px; padding: 42px 34px; box-shadow: 0 18px 44px rgba(15,23,42,.12); }
+.auth-title { text-align: center; font-size: 28px; font-weight: 800; color: #1f2d3d; margin-bottom: 6px; }
+.auth-subtitle { text-align: center; font-size: 14px; color: #8492a6; line-height: 1.6; margin-bottom: 28px; }
 .mb16 { margin-bottom: 16px; }
-.auth-link { text-align: center; margin-top: 16px; font-size: 13px; color: #409EFF; cursor: pointer; }
+.auth-link { text-align: center; margin-top: 18px; font-size: 13px; color: #2563eb; cursor: pointer; font-weight: 600; }
 </style>

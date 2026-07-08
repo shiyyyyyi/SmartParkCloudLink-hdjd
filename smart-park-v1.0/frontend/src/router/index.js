@@ -3,7 +3,7 @@ import { createRouter, createWebHistory } from 'vue-router'
 const routes = [
   { path: '/login', name: 'Login', component: () => import('../views/Login.vue') },
   { path: '/register', name: 'Register', component: () => import('../views/Register.vue') },
-  { path: '/', redirect: '/home' },
+  { path: '/', redirect: '/login' },
   { path: '/home', name: 'Home', component: () => import('../views/Home.vue'), meta: { requiresAuth: true } },
   { path: '/lots/:id', name: 'LotDetail', component: () => import('../views/LotDetail.vue'), meta: { requiresAuth: true } },
   { path: '/reservations', name: 'Reservations', component: () => import('../views/MyReservations.vue'), meta: { requiresAuth: true } },

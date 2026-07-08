@@ -161,6 +161,9 @@ def release_spot(spot_id: int, token: str = Depends(get_current_token), db: Sess
     spot = db.query(ParkingSpot).filter(ParkingSpot.id == spot_id).first()
     if not spot:
         return {"code": 404, "msg": "车位不存在"}
+    old_status = spot.status
+    if old_status == SpotStatus.FREE.value:
+        return {"code": 0, "msg": "车位已是空闲状态"}
     spot.status = SpotStatus.FREE.value
     lot = db.query(ParkingLot).filter(ParkingLot.id == spot.lot_id).first()
     if lot:

@@ -13,9 +13,10 @@
           <span class="lot-name">{{ o.lot_name }}</span>
           <el-tag :type="statusType(o.status)" size="small">{{ statusText(o.status) }}</el-tag>
         </div>
-        <p class="info">车牌：{{ o.plate_number }}</p>
+        <p class="info">车牌：{{ o.plate_number }} | 车位：{{ o.spot_number || '未分配' }}</p>
         <p class="info">入场：{{ formatTime(o.entry_time) }} | {{ o.duration_hours ? o.duration_hours + '小时' : '—' }}</p>
         <p class="info">金额：¥{{ o.amount || '—' }}</p>
+        <el-button v-if="o.status === 'parking'" type="warning" size="small" @click="checkout(o.id)">出场结算</el-button>
         <el-button v-if="o.status === 'pending_pay'" type="primary" size="small" @click="pay(o.id)">支付 ¥{{ o.amount }}</el-button>
         <el-tag v-if="o.status === 'paid'" type="success" size="small">已支付 {{ o.paid_at ? formatTime(o.paid_at) : '' }}</el-tag>
       </el-card>
@@ -52,6 +53,11 @@ async function fetch() {
 
 async function pay(id) {
   const res = await api.post(`/orders/${id}/pay`)
+  if (res.code === 0) { ElMessage.success(res.msg); fetch() } else ElMessage.error(res.msg)
+}
+
+async function checkout(id) {
+  const res = await api.post(`/orders/${id}/checkout`)
   if (res.code === 0) { ElMessage.success(res.msg); fetch() } else ElMessage.error(res.msg)
 }
 

@@ -56,6 +56,7 @@ import { ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { useAuthStore } from '../stores/auth'
 import api from '../utils/api'
+import { formatPlateNumbers, parsePlateNumbers } from '../utils/plates'
 import { ElMessage } from 'element-plus'
 
 const router = useRouter()
@@ -72,8 +73,7 @@ const editPlate = ref('')
 const saving = ref(false)
 
 const plateList = computed(() => {
-  if (!profile.value.plate_numbers) return []
-  return profile.value.plate_numbers.split(',').map(p => p.trim()).filter(Boolean)
+  return parsePlateNumbers(profile.value.plate_numbers)
 })
 
 async function fetchProfile() {
@@ -106,7 +106,10 @@ function toggleEdit() {
 async function saveProfile() {
   saving.value = true
   try {
-    const res = await api.put('/auth/profile', { phone: editPhone.value || null, plate_numbers: editPlate.value || null })
+    const res = await api.put('/auth/profile', {
+      phone: editPhone.value || null,
+      plate_numbers: formatPlateNumbers(editPlate.value) || null
+    })
     if (res.code === 0) {
       ElMessage.success('保存成功')
       editing.value = false

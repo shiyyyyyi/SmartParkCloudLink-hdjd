@@ -4,7 +4,7 @@
     <div v-loading="loading">
       <el-card v-for="r in records" :key="r.id" class="card">
         <p class="lot-name">{{ r.lot_name }}</p>
-        <p class="info">车牌：{{ r.plate_number }}</p>
+        <p class="info">车牌：{{ r.plate_number }} | 车位：{{ r.spot_number || '未分配' }}</p>
         <p class="info">入场：{{ formatTime(r.entry_time) }} | 出场：{{ formatTime(r.exit_time) }}</p>
         <p class="info">费用：¥{{ r.amount || '—' }} | {{ statusText(r.status) }}</p>
       </el-card>

@@ -42,16 +42,20 @@ def list_lots(
     total = q.count()
     lots = q.all()
 
-    # 计算距离并排序
-    if lat and lng:
+    # 计算距离并排序。注意 lat/lng 为 0 时也是合法坐标，不能用 truthy 判断。
+    has_location = lat is not None and lng is not None
+    if has_location:
         for lot in lots:
             lot.distance = round(calc_distance(lat, lng, lot.lat, lot.lng), 2)
-        if sort_by == "distance":
-            lots.sort(key=lambda x: getattr(x, 'distance', 999))
-    elif sort_by == "price":
-        lots.sort(key=lambda x: x.price_per_hour)
+
+    if sort_by == "price":
+        lots.sort(key=lambda x: (x.price_per_hour, getattr(x, 'distance', 999), x.name))
     elif sort_by == "available":
-        lots.sort(key=lambda x: x.available_spots, reverse=True)
+        lots.sort(key=lambda x: (-x.available_spots, getattr(x, 'distance', 999), x.name))
+    elif sort_by == "distance" and has_location:
+        lots.sort(key=lambda x: (getattr(x, 'distance', 999), x.price_per_hour, x.name))
+    else:
+        lots.sort(key=lambda x: x.name)
 
     start = (page - 1) * page_size
     result = []

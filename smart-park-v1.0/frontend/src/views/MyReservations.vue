@@ -8,11 +8,14 @@
           <el-tag :type="statusType(r.status)" size="small">{{ statusText(r.status) }}</el-tag>
         </div>
         <p class="addr">{{ r.lot_address }}</p>
-        <p class="info">车牌：{{ r.plate_number }} | 预约时间：{{ formatTime(r.created_at) }}</p>
+        <p class="info">车牌：{{ r.plate_number }} | 车位：{{ r.spot_number || '系统分配' }}</p>
+        <p class="info">预约时间：{{ formatTime(r.created_at) }}</p>
         <p class="info">过期时间：{{ formatTime(r.expires_at) }}</p>
+        <p v-if="r.status === 'confirmed'" class="info success">已到场确认，停车订单已生成</p>
         <div class="actions">
           <el-button v-if="r.status === 'created'" type="success" size="small" @click="confirm(r.id)">到场确认</el-button>
-          <el-button v-if="r.status === 'created' || r.status === 'confirmed'" type="danger" size="small" @click="cancel(r.id)">取消预约</el-button>
+          <el-button v-if="r.status === 'created'" type="danger" size="small" @click="cancel(r.id)">取消预约</el-button>
+          <el-button v-if="r.status === 'confirmed'" type="primary" size="small" @click="$router.push('/orders')">查看订单</el-button>
         </div>
       </el-card>
       <el-empty v-if="!loading && reservations.length === 0" description="暂无预约记录" />
@@ -45,7 +48,7 @@ async function fetch() {
 
 async function confirm(id) {
   const res = await api.put(`/reservations/${id}/confirm`)
-  if (res.code === 0) { ElMessage.success('确认成功'); fetch() } else ElMessage.error(res.msg)
+  if (res.code === 0) { ElMessage.success(res.msg || '确认成功'); fetch() } else ElMessage.error(res.msg)
 }
 
 async function cancel(id) {
@@ -64,5 +67,6 @@ h3 { margin-bottom: 16px; color: #303133; }
 .lot-name { font-weight: 600; font-size: 15px; }
 .addr { font-size: 12px; color: #909399; margin-bottom: 4px; }
 .info { font-size: 12px; color: #606266; margin-bottom: 8px; }
+.success { color: #67C23A; }
 .actions { display: flex; gap: 8px; }
 </style>

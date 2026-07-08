@@ -4,7 +4,7 @@
     <el-aside :width="collapsed ? '64px' : '200px'" class="admin-sidebar">
       <div class="sidebar-header">
         <el-icon :size="24" color="#fff" v-if="collapsed"><Setting /></el-icon>
-        <span v-else class="sidebar-title">智慧停车管理</span>
+        <span v-else class="sidebar-title">SmartPark 管理台</span>
       </div>
       <el-menu
         :default-active="activeMenu"
@@ -102,19 +102,16 @@ function logout() {
 </script>
 
 <style scoped>
-.admin-layout {
-  display: flex;
-  min-height: 100vh;
-  background: #f0f2f5;
-}
+.admin-layout { display: flex; min-height: 100vh; background: #eef4fb; }
 
 .admin-sidebar {
-  background: #304156;
+  background: linear-gradient(180deg, #1f2d3d 0%, #27384d 100%);
   display: flex;
   flex-direction: column;
   transition: width 0.3s;
   overflow: hidden;
   flex-shrink: 0;
+  box-shadow: 8px 0 24px rgba(15,23,42,.14);
 }
 
 .sidebar-header {
@@ -128,7 +125,7 @@ function logout() {
 .sidebar-title {
   color: #fff;
   font-size: 16px;
-  font-weight: 600;
+  font-weight: 800;
   white-space: nowrap;
 }
 
@@ -161,13 +158,15 @@ function logout() {
 }
 
 .admin-header {
-  background: #fff;
+  background: rgba(255,255,255,.96);
+  backdrop-filter: blur(12px);
   display: flex;
   align-items: center;
   justify-content: space-between;
   padding: 0 24px;
-  height: 56px;
-  box-shadow: 0 1px 4px rgba(0,0,0,0.06);
+  height: 64px;
+  border-bottom: 1px solid rgba(64,158,255,.12);
+  box-shadow: 0 8px 24px rgba(30,64,175,.08);
   flex-shrink: 0;
 }
 
@@ -178,7 +177,7 @@ function logout() {
 }
 
 .admin-content {
-  padding: 20px;
+  padding: 22px;
   flex: 1;
   overflow-y: auto;
 }

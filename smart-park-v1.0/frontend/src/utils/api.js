@@ -15,7 +15,11 @@ api.interceptors.request.use(config => {
 
 api.interceptors.response.use(
   res => res.data,
-  err => { ElMessage.error('网络请求失败'); return Promise.reject(err) }
+  err => {
+    const msg = err.response?.data?.msg || err.response?.data?.detail || err.message || '网络请求失败'
+    ElMessage.error(Array.isArray(msg) ? '请求参数不合法' : msg)
+    return Promise.reject(err)
+  }
 )
 
 export default api
