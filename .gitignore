@@ -9,3 +9,8 @@ dist/
 __pycache__/
 *.pyc
 .venv/
+
+# Generated presentation QA artifacts
+outputs/ppt_work/
+outputs/*_check.pptx
+outputs/*.inspect.ndjson
